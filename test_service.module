@@ -1,0 +1,63 @@
+<?php
+/*
+ * @file
+ * 
+ * 
+ */
+
+
+/*
+ * Implements hook_menu
+ */
+ 
+function test_service_menu() {
+  $items = array();
+  $items['test-service/cancel-reservation'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_cancel_reservation',
+    'access arguments' => array('access content'),
+  );
+  $items['test-service/make-reservation'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_make_reservation',
+    'access arguments' => array('access content'),
+  );
+
+  $items['test-service/exchange-outbound'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_exchange_outbound',
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
+function test_service_cancel_reservation(){
+  $service =  messagequeue_service_load('cancel_reservation');
+  $result = $service->invoke(array('pnrReference' => 'ABCDEF'));
+  print_r($result);exit;
+  // Check status and set return value.
+  if ($result['status']) {
+    $return = $result['data'];
+  }
+  //return train_tickets_get_credit_card_fee();
+}
+
+function test_service_make_reservation(){
+  $service =  messagequeue_service_load('make_reservation');
+  //TODO: build $context->storage
+  $result = $service->invoke($data);
+  // Check status and set return value.
+  if ($result['status']) {
+    $return = $result['data'];
+  }
+  //return train_tickets_get_credit_card_fee();
+}
+
+function test_service_exchange_outbound() {
+  $service =  messagequeue_service_load('get_exchange_proposal');
+  $params = array(
+  
+  );
+  $result = $service->invoke(array('pnrReference' => 'ABCDEF'));
+  print_r($result);exit;
+}

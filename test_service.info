@@ -1,0 +1,4 @@
+name = Test service
+description = Module to test the services
+core = 7.x
+packages = Eurostar dev
