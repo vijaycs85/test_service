@@ -28,6 +28,11 @@ function test_service_menu() {
     'page callback' => 'test_service_exchange_outbound',
     'access arguments' => array('access content'),
   );
+  $items['test-service/exchange-inbound'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_exchange_inbound',
+    'access arguments' => array('access content'),
+  );
   return $items;
 }
 
@@ -56,8 +61,43 @@ function test_service_make_reservation(){
 function test_service_exchange_outbound() {
   $service =  messagequeue_service_load('get_exchange_proposal');
   $params = array(
-  
+  'data' => array(
+    'pnrReference' => 'ABCDEF',
+    'passengers' => array(
+      array('firstName' => 'F1', 'lastName' => 'L1'),
+      array('firstName' => 'F2', 'lastName' => 'L2'),
+    ),
+    'inboundDateTime' => time()+ 1000,
+    'outboundDateTime' => time(),
+    'depart' => time() + 10001,
+    'arrival' => time() + 10000,
+    'from' => 'GBSPX',
+    'to' => 'FRPNO',
+  ),
+  'journey_type' => 'Outward',
   );
-  $result = $service->invoke(array('pnrReference' => 'ABCDEF'));
+  $result = $service->invoke($params);
+  print_r($result);exit;
+}
+
+function test_service_exchange_inbound() {
+  $service =  messagequeue_service_load('get_exchange_proposal');
+  $params = array(
+  'data' => array(
+    'pnrReference' => 'ABCDEF',
+    'passengers' => array(
+      array('firstName' => 'F1', 'lastName' => 'L1'),
+      array('firstName' => 'F2', 'lastName' => 'L2'),
+    ),
+    'inboundDateTime' => time()+ 1000,
+    'outboundDateTime' => time(),
+    'depart' => time() + 10001,
+    'arrival' => time() + 10000,
+    'from' => 'GBSPX',
+    'to' => 'FRPNO',
+  ),
+  'journey_type' => 'Inward',
+  );
+  $result = $service->invoke($params);
   print_r($result);exit;
 }
