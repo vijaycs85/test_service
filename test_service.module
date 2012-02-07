@@ -33,6 +33,11 @@ function test_service_menu() {
     'page callback' => 'test_service_exchange_inbound',
     'access arguments' => array('access content'),
   );
+  $items['test-service/valiate-proposal'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_validate_proposal',
+    'access arguments' => array('access content'),
+  );
   return $items;
 }
 
@@ -123,6 +128,60 @@ function test_service_exchange_inbound() {
       )
     ),
   );
+  $result = $service->invoke($params);
+  print_r($result);exit;
+}
+
+function test_service_validate_proposal() {
+  $start = time() + 10001;
+  $end = time() + 20000;
+  $segment_details['segment_data'] = array(
+      array(
+        'endDate' => date('d/m/Y', $end),
+        'endTime' => date('H:i', $end),
+        'startDate' => date('d/m/Y', $start),
+        'startTime' => date('H:i', $start),
+        'segmentId' => 1,
+        'trainNumber' => '9000',
+        'carrierCode' => 1,
+        'depart' => $end,
+        'arrival' => $start,
+        'originCode' => 'GBSPX',
+        'destinationCode' => 'FRPNO',
+        'marketingTrainNumber' => 5000,
+        'marketingCarrierCode' => 1,
+        'passengerFare' => array(
+          array('classOfService' => 'AF', 'fareCode'=>'BVSFLASB', 'passengerTypeCode'=>'PT01AD','passengerId'=>1),
+          array('classOfService' => 'AF', 'fareCode'=>'BVSFLASB', 'passengerTypeCode'=>'PT01AD','passengerId'=>2),
+        )
+      )
+    );
+  $journey_details = array(
+    array(
+      'originCode' => 'GBSPX',
+      'destinationCode' => 'FRPNO',
+      'depart' => $end,
+      'arrival' => $start,
+      'journeyId' => 1,
+    ),
+  );
+  $params = array(
+  'pnrReference' => 'AAAAAA',
+  'passengers' => array(
+    array('firstName' => 'F1', 'lastName' => 'L1', 'passengerId' => 1),
+    array('firstName' => 'F2', 'lastName' => 'L2', 'passengerId' => 2),
+  ),
+  'inboundDateTime' => time()+ 1000,
+  'outboundDateTime' => time(),
+  'depart' => time() + 10001,
+  'arrival' => time() + 10000,
+  'from' => 'GBSPX',
+  'to' => 'FRPNO',
+  'inbound' => $segment_details,
+  'outbound' => $segment_details,
+  'journeyDetails' => $journey_details,
+  );
+  $service =  messagequeue_service_load('validate_proposal');
   $result = $service->invoke($params);
   print_r($result);exit;
 }
