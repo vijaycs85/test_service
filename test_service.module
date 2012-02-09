@@ -38,6 +38,11 @@ function test_service_menu() {
     'page callback' => 'test_service_validate_proposal',
     'access arguments' => array('access content'),
   );
+  $items['test-service/authorize-card'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_authorize_card',
+    'access arguments' => array('access content'),
+  );
   return $items;
 }
 
@@ -182,6 +187,32 @@ function test_service_validate_proposal() {
   'journeyDetails' => $journey_details,
   );
   $service =  messagequeue_service_load('validate_proposal');
+  $result = $service->invoke($params);
+  print_r($result);exit;
+}
+
+function test_service_authorize_card() {
+
+  $params = array(
+          // @todo purchase_desc needs to be figured out how it will be assembled.
+          'purchase_desc' => 'Ticket purchase', //$payment['description'],
+          'merchant_reference' => 'Merchant name',
+          'currency' => 'EUR', //$payment['amount']['currency_code'],
+          'amount' => '125', //commerce_currency_amount_to_decimal($payment['amount']['amount'], $payment['amount']['currency_code']),
+          'card' => array(
+            'street_address1' => 'Address 1',
+            'street_address2' => NULL,
+            'postcode' => NULL,
+            'issue_number' => NULL,
+            'start_date' => NULL,
+            'expiry_date' => '12/12',
+            'pan' => '1000070000000001',
+            'cv2' => '123',
+          ),
+          'method' => 'auth',
+        );
+ 
+  $service =  messagequeue_service_load('authorize_card');
   $result = $service->invoke($params);
   print_r($result);exit;
 }
