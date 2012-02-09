@@ -43,6 +43,16 @@ function test_service_menu() {
     'page callback' => 'test_service_authorize_card',
     'access arguments' => array('access content'),
   );
+  $items['test-service/authorize-card-cc-token'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_authorize_card_cc_token',
+    'access arguments' => array('access content'),
+  );
+  $items['test-service/modify-passenger-data'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_modify_passenger_data',
+    'access arguments' => array('access content'),
+  );
   return $items;
 }
 
@@ -196,23 +206,69 @@ function test_service_authorize_card() {
   $params = array(
           // @todo purchase_desc needs to be figured out how it will be assembled.
           'purchase_desc' => 'Ticket purchase', //$payment['description'],
-          'merchant_reference' => 'Merchant name',
-          'currency' => 'EUR', //$payment['amount']['currency_code'],
+          'currency' => 'GBP', //$payment['amount']['currency_code'],
           'amount' => '125', //commerce_currency_amount_to_decimal($payment['amount']['amount'], $payment['amount']['currency_code']),
           'card' => array(
             'street_address1' => 'Address 1',
             'street_address2' => NULL,
-            'postcode' => NULL,
+            'postcode' => 'AB1 2CD',
             'issue_number' => NULL,
             'start_date' => NULL,
-            'expiry_date' => '12/12',
-            'pan' => '1000070000000001',
+            'expiry_date' => '08/12',
+            'pan' => '1000171234567896',
             'cv2' => '123',
           ),
-          'method' => 'auth',
         );
  
   $service =  messagequeue_service_load('authorize_card');
+  $service->setHeaders(array('authorizeRetryCount' => 1));
+  $result = $service->invoke($params);
+  print_r($result);exit;
+}
+
+function test_service_authorize_card_cc_token() {
+
+  $params = array(
+          // @todo purchase_desc needs to be figured out how it will be assembled.
+          'purchase_desc' => 'Ticket purchase', //$payment['description'],
+          'currency' => 'GBP', //$payment['amount']['currency_code'],
+          'amount' => '125', //commerce_currency_amount_to_decimal($payment['amount']['amount'], $payment['amount']['currency_code']),
+          'rateId' => '3900900010002469',
+          'action' => 'opt_in',
+          'card' => array(
+            'street_address1' => 'Address 1',
+            'street_address2' => NULL,
+            'postcode' => 'AB1 2CD',
+            'issue_number' => NULL,
+            'start_date' => NULL,
+            'expiry_date' => '08/12',
+            'pan' => 'FACBE350B7FB506E56E21524679FB07BEB83C157',
+            'cv2' => '123',
+          ),
+          
+        );
+ 
+  $service =  messagequeue_service_load('authorize_card_cc_token');
+  $service->setHeaders(array('authorizeRetryCount' => 1));
+  $result = $service->invoke($params);
+  print_r($result);exit;
+}
+
+function test_service_modify_passenger_data() {
+  $params['train_search']['tickets']['make_reservation'] = 'AAAAAA';
+  $params['train_search']['tickets']['traveller_details'] = array(
+    'ADULT' => array(
+      array('first_name' => 'F1', 'last_name' => 'L1', 'passenger_id' => '1', 'membership' => '1001', 'wheelchair' => FALSE, 'title' => 'Mr'),
+      array('first_name' => 'F2', 'last_name' => 'L2', 'passenger_id' => '2', 'membership' => '1002', 'wheelchair' => TRUE, 'title' => 'Mr'),
+    ),
+    'CHILD' => array(
+      array('first_name' => 'F3', 'last_name' => 'L3', 'passenger_id' => '3', 'membership' => '1003', 'wheelchair' => FALSE, 'title' => 'Mr'),
+      array('first_name' => 'F4', 'last_name' => 'L4', 'passenger_id' => '4', 'membership' => '1004', 'wheelchair' => TRUE, 'title' => 'Mr'),
+    ),
+  );
+
+  $service =  messagequeue_service_load('modify_passenger_data');
+  $service->stub = TRUE;
   $result = $service->invoke($params);
   print_r($result);exit;
 }
