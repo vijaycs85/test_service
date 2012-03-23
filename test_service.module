@@ -68,7 +68,11 @@ function test_service_menu() {
     'page callback' => 'test_service_get_booking_quotation_by_period',
     'access arguments' => array('access content'),
   );
-  return $items;
+  $items['test-service/manage-user'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_manage_user',
+    'access arguments' => array('access content'),
+  );  return $items;
 }
 function test_service_get_list_od() {
   
@@ -362,5 +366,13 @@ function test_service_get_booking_quotation_by_period() {
   $service =  GetBookingQuotationByPeriod::create();
   $service->stub = TRUE;
   $result = $service->getPropositionsForMonth(1330905600);
+  print_r($result);exit;
+}
+
+function test_service_manage_user() {
+  $service =  ManageCustomer::create();
+  $result = $service->addMemberContact('H', 'testing4@mail.com');
+  $service->invoke();
+  print_r($service->getCustomerNumber());exit;
   print_r($result);exit;
 }
