@@ -12,6 +12,12 @@
  
 function test_service_menu() {
   $items = array();
+  $items['test-service/get-passenger'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('test_service_get_passenger'),
+    'access arguments' => array('access content'),
+  );
   $items['test-service/get-list-od'] = array(
     'title' => 'Testing services',
     'page callback' => 'test_service_get_list_od',
@@ -72,10 +78,20 @@ function test_service_menu() {
     'title' => 'Testing services',
     'page callback' => 'test_service_manage_user',
     'access arguments' => array('access content'),
-  );  return $items;
+  );
+  $items['test-service/get-hotel-rule-rates'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_get_hotel_rate_rules',
+    'access arguments' => array('access content'),
+  );
+  
+
+  return $items;
 }
 function test_service_get_list_od() {
-  
+  $service = messagequeue_service_load('get_od_pair');
+  $result = $service->invoke(array());
+  print_r($result);exit;
 }
 function test_service_cancel_reservation(){
   $service =  messagequeue_service_load('cancel_reservation');
@@ -100,72 +116,57 @@ function test_service_make_reservation(){
 }
 
 function test_service_exchange_outbound() {
-  $service =  messagequeue_service_load('get_exchange_proposal');
-  $params = array(
-  'data' => array(
-    'pnrReference' => 'ABCDEF',
-    'passengers' => array(
-      array('firstName' => 'F1', 'lastName' => 'L1'),
-      array('firstName' => 'F2', 'lastName' => 'L2'),
-    ),
-    'inboundDateTime' => time()+ 1000,
-    'outboundDateTime' => time(),
-    'depart' => time() + 10001,
-    'arrival' => time() + 10000,
-    'from' => 'GBSPX',
-    'to' => 'FRPNO',
-  ),
-  'journey_type' => 'Outward',
+  $passengers = array(
+    array('first_name' => 'F1', 'last_name' => 'L1', 'passenger_id' => 1),
+    array('first_name' => 'F2', 'last_name' => 'L2', 'passenger_id' => 2),
   );
-  $result = $service->invoke($params);
-  print_r($result);exit;
+  //$id, $type, $origin_code, $destination_code, DateTime $departure_date, DateTime $arrival_date, $duration, TrainTicketProductWrapper $ticket = NULL, Price $price = NULL
+  $od = array(
+    'origin_code' => 'GBSPX',
+    'destination_code' => 'FRPNO'
+  );
+  
+  $service =  GetExchangeProposal::create();
+  $service->setPnrReference('ABCDEF');
+  foreach ($passengers as $passenger) {
+    $service->addPassenger($passenger['passenger_id'], $passenger['first_name'], $passenger['last_name']);
+  }
+  $origin_destination = entity_load('origin_destination', FALSE, array('origin_code' => '7015400', 'destination_code' => '8727100'));
+  $od = array_pop($origin_destination);
+  $service->setOD($od);
+  $service->setOperationType(1);
+  $service->setJourneyId(1); 
+  $service->setDepartureDateFromTimestamp(time() + 10000);
+  $service->setReturnDateFromTimestamp(time() + 20000);
+  $service->invoke();
+  //$service->getPp
+  exit;
 }
 
 function test_service_exchange_inbound() {
-  $service =  messagequeue_service_load('get_exchange_proposal');
-  $start = time() + 10001;
-  $end = time() + 20000;
-  
-  $params = array(
-    'data' => array(
-      'pnrReference' => 'ABCDEF',
-      'passengers' => array(
-        array('firstName' => 'F1', 'lastName' => 'L1', 'passengerId' => 1),
-        array('firstName' => 'F2', 'lastName' => 'L2', 'passengerId' => 2),
-      ),
-      'inboundDateTime' => $end,
-      'outboundDateTime' => $start,
-      'depart' => $end,
-      'arrival' => $start,
-      'from' => 'GBSPX',
-      'to' => 'FRPNO',
-    ),
-    'journey_type' => 'Inward',
-    'segment_data' => array(
-      array(
-        'endDate' => date('d/m/Y', $end),
-        'endTime' => date('H:i', $end),
-        'startDate' => date('d/m/Y', $start),
-        'startTime' => date('H:i', $start),
-        'segmentId' => 1,
-        'trainNumber' => '9000',
-        'carrierCode' => 1,
-        'depart' => $end,
-        'arrival' => $start,
-        'originCode' => 'GBSPX',
-        'destinationCode' => 'FRPNO',
-        'marketingTrainNumber' => 5000,
-        'marketingCarrierCode' => 1,
-        'passengerFare' => array(
-          array('classOfService' => 'AF', 'fareCode'=>'BVSFLASB', 'passengerTypeCode'=>'PT01AD','passengerId'=>1),
-          array('classOfService' => 'AF', 'fareCode'=>'BVSFLASB', 'passengerTypeCode'=>'PT01AD','passengerId'=>2),
-        )
-      
-      )
-    ),
+  // $service =  messagequeue_service_load('get_exchange_proposal');
+  $passengers = array(
+    array('first_name' => 'F1', 'last_name' => 'L1', 'passenger_id' => 1),
+    array('first_name' => 'F2', 'last_name' => 'L2', 'passenger_id' => 2),
   );
-  $result = $service->invoke($params);
-  print_r($result);exit;
+  $od = array(
+    'originCode' => 'GBSPX',
+    'destinationCode' => 'FRPNO',
+  );
+  $service =  GetExchangeProposal::create();
+  $service->setPnrReference('ABCDEF');
+  foreach ($passengers as $passenger) {
+    $service->addPassenger($passenger['passenger_id'], $passenger['first_name'], $passenger['last_name']);
+  }
+  $origin_destination = entity_load('origin_destination', FALSE, array('origin_code' => '7015400', 'destination_code' => '8727100'));
+  $od = array_pop($origin_destination);
+  $service->setOD($od);
+  $service->setOperationType(1);
+  $service->setJourneyId(1);
+  $service->journey_type = 'Inward'; 
+  $service->setDepartureDateFromTimestamp(time() + 10000);
+  $service->setReturnDateFromTimestamp(time() + 20000);
+  $service->invoke();
 }
 
 function test_service_validate_proposal() {
@@ -370,9 +371,53 @@ function test_service_get_booking_quotation_by_period() {
 }
 
 function test_service_manage_user() {
-  $service =  ManageCustomer::create();
-  $result = $service->addMemberContact('H', 'testing4@mail.com');
+  $service =  ManageCustomer::create();// print_r($service);
+  $result = $service->addMemberContact('testing28@mail.com', 'I', 'H');
+  $service->setDefaults();
   $service->invoke();
-  print_r($service->getCustomerNumber());exit;
-  print_r($result);exit;
+  return $service->getCustomerNumber();
+  }
+  
+function test_service_get_hotel_rate_rules() {
+  $service =  GetHotelRateRules::create();
+  $result = $service->setReservationToken('adsfadsf');
+  $result = $service->setGeneralProperties('adsfasdf');
+  $service->invoke();
+  //return $service->getCustomerNumber();
+}
+
+function test_service_get_passenger() {
+  global $user;
+  $account = user_load($user->uid);
+  $wrapper = extended_entity_wrapper('user', $account, array(), 'UserEntityWrapper');
+  $default_travellers = array('0' => Adult1);
+  foreach ($wrapper->getAllTravellers() as $traveller) {
+    $default_travellers[$traveller->id] = $traveller->getFullName();
+  }
+  // Get title options from reference data store
+  $title_options = array( // @TODO: BR263
+    NULL => t('Select'), 
+    'Mr' => t('Mr'), 
+    'Ms' => t('Ms'), 
+    'Mrs' => t('Mrs'), 
+    'Miss' => t('Miss'),
+    'Dr' => t('Dr')
+  );
+  $form['traveller'] = array (
+    '#type' => 'traveller',
+    '#title' => 'Adult1',
+    '#title_options' => $title_options,
+    '#default_travellers' => $default_travellers,
+  );
+  $form['go'] = array (
+    '#type' => 'submit',
+    '#value' => t('Go'),
+  );
+  return $form;
+}
+function test_service_get_passenger_validate($form, &$form_state) {
+  
+}
+
+function test_service_get_passenger_submit($form, &$form_state) {
 }
