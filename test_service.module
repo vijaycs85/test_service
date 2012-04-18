@@ -12,6 +12,11 @@
  
 function test_service_menu() {
   $items = array();
+  $items['test-service/checkout'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_checkout',
+    'access arguments' => array('access content'),
+  );
   $items['test-service/get-passenger'] = array(
     'title' => 'Testing services',
     'page callback' => 'drupal_get_form',
@@ -386,14 +391,16 @@ function test_service_get_hotel_rate_rules() {
   //return $service->getCustomerNumber();
 }
 
-function test_service_get_passenger() {
+function test_service_get_passenger($form, &$form_state) {
   global $user;
   $account = user_load($user->uid);
   $wrapper = extended_entity_wrapper('user', $account, array(), 'UserEntityWrapper');
-  $default_travellers = array('0' => Adult1);
-  foreach ($wrapper->getAllTravellers() as $traveller) {
-    $default_travellers[$traveller->id] = $traveller->getFullName();
+  $default_travellers = array('' => Adult1);
+  foreach ($wrapper->getAllTravellers() as $id => $traveller) {
+    $default_travellers[$id] = $traveller->title . ' ' . $traveller->first_name . ' ' .$traveller->last_name;
   }
+
+  $selected = isset($form_state['values']['dropdown_first']) ? $form_state['values']['dropdown_first'] : NULL; 
   // Get title options from reference data store
   $title_options = array( // @TODO: BR263
     NULL => t('Select'), 
@@ -403,21 +410,102 @@ function test_service_get_passenger() {
     'Miss' => t('Miss'),
     'Dr' => t('Dr')
   );
-  $form['traveller'] = array (
-    '#type' => 'traveller',
-    '#title' => 'Adult1',
-    '#title_options' => $title_options,
-    '#default_travellers' => $default_travellers,
+  $form['textfield1'] = array (
+    '#type' => 'select',
+    '#options' => $default_traveller,
   );
-  $form['go'] = array (
+  
+  $form['adult1'] = array (
+    '#type' => 'traveller',
+    '#title' => 'Adult1'.$selected,
+    '#title_options' => $title_options,
+    //'#default_travellers' => $default_travellers,
+    // '#default_value' => _test_service_dependent_dropdown($selected),
+    '#default_value' => array(
+        'title' => 'Mr',
+        'first_name' => 'dsdd'.$selected,
+        'last_name' => 'ssqss'.$selected,
+    ),
+    '#prefix' => '<div id="dropdown-second-replace">',
+    '#suffix' => '</div>',
+  );
+
+  $options_first = _ajax_example_get_first_dropdown_options();
+  // If we have a value for the first dropdown from $form_state['values'] we use
+  // this both as the default value for the first dropdown and also as a
+  // parameter to pass to the function that retrieves the options for the
+  // second dropdown.
+  
+  $form['dropdown_first'] = array (
+    '#type' => 'select',
+    '#title' => 'Instrument Type',
+    '#options' => $default_travellers,
+    '#default_value' => $selected,
+    '#ajax' => array(
+      // When 'event' occurs, Drupal will perform an ajax request in the
+      // background. Usually the default value is sufficient (eg. change for
+      // select elements), but valid values include any jQuery event,
+      // most notably 'mousedown', 'blur', and 'submit'.
+      // 'event' => 'change',
+      'callback' => 'test_service_dependent_dropdown_callback',
+      'wrapper' => 'dropdown-second-replace',
+    ),
+  );
+  $form['submit'] = array (
     '#type' => 'submit',
     '#value' => t('Go'),
   );
   return $form;
+}
+function test_service_dependent_dropdown_callback($form, $form_state) {
+  return $form['adult1'];
 }
 function test_service_get_passenger_validate($form, &$form_state) {
   
 }
 
 function test_service_get_passenger_submit($form, &$form_state) {
+}
+function _test_service_dependent_dropdown($selected) {
+  if (empty($selected) && $selected !== 0) {
+    return array(
+    'title' => 'Mr',
+    'first_name' => 'dsdd'.$selected,
+    'last_name' => 'ssqss'.$selected,
+    );
+  }
+  global $user;
+  $account = user_load($user->uid);
+  $wrapper = extended_entity_wrapper('user', $account, array(), 'UserEntityWrapper');
+  $passenger = $wrapper->getTravellerById($selected);
+  return array(
+    'title' => $passenger->title,
+    'first_name' => $passenger->first_name,
+    'last_name' => $passenger->last_name,
+  );
+}
+
+function test_service_checkout() {
+  $checkout = Checkout::create();
+  $checkout->stub = TRUE;
+  $contact = array(
+    'address_line_1' => 'Address 1',
+    'town' => 'London',
+    'country_2' => 'Address 1',
+    'first_name' => 'John',
+    'last_name' => 'Bosco',
+    'std_code' => '121',
+    'email' => 'asdaf@mail.com',
+    'phone' => '7778889999',
+    'post_code' => '12121',
+    'title' => 'Mr',
+  );
+  $checkout->setContactDetails($contact);
+  $checkout->setCardFee(120);
+  $checkout->setPnrReference('ABCDEF');
+  $checkout->setDatacashReference('Payment123');
+  $checkout->setPromocodeReference('PROMO123');
+  $checkout->invoke();
+  echo $checkout->bookingEventLinkID();
+  echo $checkout->getTransactionState();exit;
 }
