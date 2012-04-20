@@ -12,6 +12,16 @@
  
 function test_service_menu() {
   $items = array();
+  $items['test-service/load-travel'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_load_travel',
+    'access arguments' => array('access content'),
+  );
+  $items['test-service/retrieve-customer'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_retrieve_customer',
+    'access arguments' => array('access content'),
+  );
   $items['test-service/checkout'] = array(
     'title' => 'Testing services',
     'page callback' => 'test_service_checkout',
@@ -508,4 +518,28 @@ function test_service_checkout() {
   $checkout->invoke();
   echo $checkout->bookingEventLinkID();
   echo $checkout->getTransactionState();exit;
+}
+
+function test_service_retrieve_customer() {
+  $service = RetrieveCustomer::create();
+  $service->stub = TRUE;
+  $service->setCustomerNumber(231);
+  $service->invoke();
+  print_r($service->getResponse());
+}
+
+function test_service_load_travel() {
+  $service = LoadTravel::create();
+  $service->setPnr('ABCDEF');/*
+  
+  // setPassengerInformation($lastname, $email = NULL, $eft_number = NULL, $creditcard_token = NULL)
+  $service->setPassengerInformation('LASTNAME', 'me@mail.com', 'eft121212112', 'creditcard121212121'); 
+  $service->setTravelDate(time()+2*24*60);
+  $service->history = TRUE;
+  $service->eligibility_mod = TRUE;
+  $service->invoke();*/
+  $service->setPassengerInformation('LASTNAME', 'me@mail.com', 'eft121212112', 'creditcard121212121');
+  $passenger = $service->getPassengerInformation();
+  print_r($passenger);exit;
+  
 }
