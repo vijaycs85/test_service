@@ -140,19 +140,29 @@ function test_service_exchange_outbound() {
     'origin_code' => 'GBSPX',
     'destination_code' => 'FRPNO'
   );
-  
+  $travel = LoadTravel::create();
+  $travel->pnr = 'TKPLPB';
+  $travel->stub = 1; 
+  $travel->invoke();
+  print_r($travel->getDepartureTimestamp());
+  exit;
   $service =  GetExchangeProposal::create();
-  $service->setPnrReference('ABCDEF');
+  $service->pnr_reference = 'TKPLPB';
   foreach ($passengers as $passenger) {
     $service->addPassenger($passenger['passenger_id'], $passenger['first_name'], $passenger['last_name']);
   }
-  $origin_destination = entity_load('origin_destination', FALSE, array('origin_code' => '7015400', 'destination_code' => '8727100'));
-  $od = array_pop($origin_destination);
-  $service->setOD($od);
-  $service->setOperationType(1);
-  $service->setJourneyId(1); 
-  $service->setDepartureDateFromTimestamp(time() + 10000);
-  $service->setReturnDateFromTimestamp(time() + 20000);
+  // $origin_destination = entity_load('origin_destination', FALSE, array('origin_code' => '7015400', 'destination_code' => '8727100'));
+  // $od = array_pop($origin_destination);
+  // $service->setOD($od);
+  $service->operation_type = 'EXCH';
+  //$service->setJourneyId(1); 
+  $service->setDepartureDateFromTimestamp(time() + 20000);
+  $service->setReturnDateFromTimestamp(time() + 40000);
+
+  // This is from load travel
+  $service->setOldDepartureDateFromTimestamp(time() + 10000);
+  $service->setOldReturnDateFromTimestamp(time() + 20000);
+  
   $service->invoke();
   //$service->getPp
   exit;
