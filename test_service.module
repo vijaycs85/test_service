@@ -12,6 +12,17 @@
  
 function test_service_menu() {
   $items = array();
+  $items['test-service/finalize-refund'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_finalize_refund',
+    'access arguments' => array('access content'),
+  );
+  $items['test-service/refund-proposal'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_refund_proposal',
+    'access arguments' => array('access content'),
+  );
+  
   $items['test-service/load-travel'] = array(
     'title' => 'Testing services',
     'page callback' => 'test_service_load_travel',
@@ -144,7 +155,8 @@ function test_service_exchange_outbound() {
   $travel->pnr = 'TKPLPB';
   $travel->stub = 1;
   $travel->invoke();
-  
+  print_r($travel->isFlexible());exit;
+
   $service =  GetExchangeProposal::create();
   $service->departure_date = $travel->getDepartureTimestamp();
   $service->return_date = $travel->getArrivalTimestamp();
@@ -195,6 +207,7 @@ function test_service_exchange_inbound() {
 }
 
 function test_service_validate_proposal() {
+  /*
   $start = time() + 10001;
   $end = time() + 20000;
   $segment_details['segment_data'] = array(
@@ -243,7 +256,39 @@ function test_service_validate_proposal() {
   'outbound' => $segment_details,
   'journeyDetails' => $journey_details,
   );
-  $service =  messagequeue_service_load('validate_proposal');
+  */
+  $service =  ValidateProposal::create();
+  $service->pnr_reference = 'TPWJOD';
+  //$id, $type, $origin_code, $destination_code, DateTime $departure_date, DateTime $arrival_date, $duration, TrainTicketProductWrapper $ticket = NULL, Price $price = NULL) {
+  $departure_date = new DateTime();
+  $departure_date->setTimeStamp(strtotime('10/05/2012 06:24:00'));
+  $arrival_date = new DateTime();
+  $arrival_date->setTimeStamp(strtotime('10/05/2012 13:25:00'));
+  $origin_code = 7054660;
+  $destination_code = 8775100;
+  $journey = new Journey(1, Journey::$TYPE_OUTWARD, $origin_code, $destination_code, $departure_date, $arrival_date, 7*60+1);
+  //$id, $type, $title, $first_name, $last_name, $age, $wheel_chair = FALSE, $companion = FALSE, $carriage_number = NULL, $seat_number = NULL, $meal_code = NULL, Price $price = NULL) {
+  $passengers[] = new Passenger('1.1', Passenger::$TYPE_ADULT, 'Mr', 'JOHN', 'BOSCO', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+  $passengers[] = new Passenger('2.1', Passenger::$TYPE_ADULT, 'Mrs', 'ROSE', 'JOHN', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+  $passengers[] = new Passenger('3.1', Passenger::$TYPE_ADULT, 'Mr', 'YOUTH', 'JOHN', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+  //($id, $type, $origin_code, $destination_code, DateTime $origin_code, DateTime $arrival_date, $duration, CarrierEntityWrapper $carrier)
+  $segments[] = new Segment(1, Journey::$TYPE_OUTWARD, $origin_code, $destination_code, $departure_date, $arrival_date, 150);
+  $segments[] = new Segment(2, Journey::$TYPE_OUTWARD, $origin_code, $destination_code, $departure_date, $arrival_date, 150);
+
+  // Passenger $passenger, $passenger_type_code, $class_of_service, $fare_code, $seat_preference_code = NULL, $toc_fare_code = NULL, $toc_fare_description = NULL
+  $passenger = new Passenger('1.1', Passenger::$TYPE_ADULT, 'Mr', 'JOHN', 'BOSCO', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+  $passenger_fares[] = new PassengerFare($passenger, 'PT00AD', 'BF', 'BFBASB');
+  $passenger_fares[] = new PassengerFare($passenger, 'PT00AD', 'BF', 'BFBASB');
+
+  $service->addSelectedJourney(Journey::$TYPE_OUTWARD, $segments, $passenger_fares);
+  $service->addSelectedJourney(Journey::$TYPE_INWARD, $segments, $passenger_fares);
+
+  $service->addJourney($journey);
+  foreach ($passengers as $passenger) {
+    $service->addPassenger($passenger);
+  }
+  
+  
   $result = $service->invoke($params);
   print_r($result);exit;
 }
@@ -532,10 +577,17 @@ function test_service_checkout() {
 
 function test_service_retrieve_customer() {
   $service = RetrieveCustomer::create();
-  $service->stub = TRUE;
-  $service->setCustomerNumber(231);
+  // $service->stub = TRUE;
+  // $service->customer_number = 608;
+   $service->email = 'estar197@uk.com';
   $service->invoke();
-  print_r($service->getResponse());
+  /*
+  $user = new stdClass();
+  $user->field_user_title = 'dd';
+  $user->field_user_first_name = 'dd';
+  // print_r($service->getUser($user));
+   
+   */
 }
 
 function test_service_load_travel() {
@@ -552,4 +604,51 @@ function test_service_load_travel() {
   $passenger = $service->getPassengerInformation();
   print_r($passenger);exit;
   
+}
+
+function test_service_refund_proposal() {
+  $service = GetRefundProposal::create();
+  $service->pnr_reference = 'TPWJOD';
+  //$id, $type, $origin_code, $destination_code, DateTime $departure_date, DateTime $arrival_date, $duration, TrainTicketProductWrapper $ticket = NULL, Price $price = NULL) {
+  $departure_date = new DateTime();
+  $departure_date->setTimeStamp(strtotime('10/05/2012 06:24:00'));
+  $arrival_date = new DateTime();
+  $arrival_date->setTimeStamp(strtotime('10/05/2012 13:25:00'));
+  $journey = new Journey(1, Journey::$TYPE_OUTWARD, 7054660, 8775100, $departure_date, $arrival_date, 7*60+1);
+  //$id, $type, $title, $first_name, $last_name, $age, $wheel_chair = FALSE, $companion = FALSE, $carriage_number = NULL, $seat_number = NULL, $meal_code = NULL, Price $price = NULL) {
+  $passengers[] = new Passenger('1.1', Passenger::$TYPE_ADULT, 'Mr', 'JOHN', 'BOSCO', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+  $passengers[] = new Passenger('2.1', Passenger::$TYPE_ADULT, 'Mrs', 'ROSE', 'JOHN', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+  $passengers[] = new Passenger('3.1', Passenger::$TYPE_ADULT, 'Mr', 'YOUTH', 'JOHN', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+ 
+  $service->addJourney($journey);
+  foreach ($passengers as $passenger) {
+    $service->addPassenger($passenger);
+  }
+  $service->invoke();
+}
+
+function test_service_finalize_refund() {
+  $service = FinalizeRefund::create();
+  $service->pnr_reference = 'TPWJOD';
+  //$id, $type, $origin_code, $destination_code, DateTime $departure_date, DateTime $arrival_date, $duration, TrainTicketProductWrapper $ticket = NULL, Price $price = NULL) {
+  $departure_date = new DateTime();
+  $departure_date->setTimeStamp(strtotime('10/05/2012 06:24:00'));
+  $arrival_date = new DateTime();
+  $arrival_date->setTimeStamp(strtotime('10/05/2012 13:25:00'));
+  $journey = new Journey(1, Journey::$TYPE_OUTWARD, 7054660, 8775100, $departure_date, $arrival_date, 7*60+1);
+  //$id, $type, $title, $first_name, $last_name, $age, $wheel_chair = FALSE, $companion = FALSE, $carriage_number = NULL, $seat_number = NULL, $meal_code = NULL, Price $price = NULL) {
+  $passengers[] = new Passenger('1.1', Passenger::$TYPE_ADULT, 'Mr', 'JOHN', 'BOSCO', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+  $passengers[] = new Passenger('2.1', Passenger::$TYPE_ADULT, 'Mrs', 'ROSE', 'JOHN', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+  $passengers[] = new Passenger('3.1', Passenger::$TYPE_ADULT, 'Mr', 'YOUTH', 'JOHN', Passenger::$PASSENGER_AGE[Passenger::$TYPE_ADULT]);
+  // $scheme, $surcharge, $expiry_date, $token = NULL, psp_transaction_id
+  $service->addCreditCardTransaction(new CreditCardTransaction('VISA', 0, '08/13', NULL, 'transaction_id'));
+  $service->addCreditCardTransaction(new CreditCardTransaction('MASTER', 0, '08/13', NULL, 'transaction_id'));
+  // $id, $amount, $expire, $psp_transaction_id
+  // $service->addVoucherTransaction(new HistoryVoucher('VO12', 10.12, time(), 'transaction_id'));
+
+  $service->addJourney($journey);
+  foreach ($passengers as $passenger) {
+    $service->addPassenger($passenger);
+  }
+  $service->invoke();
 }
