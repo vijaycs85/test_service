@@ -12,6 +12,12 @@
  
 function test_service_menu() {
   $items = array();
+  
+  $items['test-service/address-finder'] = array(
+    'title' => 'Address services',
+    'page callback' => 'test_service_address_finder',
+    'access arguments' => array('access content'),
+  );
   $items['test-service/finalize-refund'] = array(
     'title' => 'Testing services',
     'page callback' => 'test_service_finalize_refund',
@@ -651,4 +657,15 @@ function test_service_finalize_refund() {
     $service->addPassenger($passenger);
   }
   $service->invoke();
+}
+
+function test_service_address_finder() {
+    $paf_service = AddressFinder::create();
+    $paf_service->stub = FALSE;
+    $paf_service->postcode = 'NB12 12F';
+    $paf_service->propertyDetail = '';
+    $paf_service->invoke();
+    $address = $paf_service->getAddress();
+    print_r($address);exit;
+  
 }
