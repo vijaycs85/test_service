@@ -6,6 +6,10 @@
  */
 
 
+define('TEST_SERVICE_RUNNING', 1);
+define('TEST_SERVICE_FAILING', 2);
+define('TEST_SERVICE_CHECKING', 6);
+
 /*
  * Implements hook_menu
  */
@@ -57,7 +61,7 @@ function test_service_menu() {
   );
   $items['test-service/get-list-od'] = array(
     'title' => 'Testing services',
-    'page callback' => 'test_service_get_list_od',
+    'page callback' => 'test_service_get_od_pair',
     'access arguments' => array('access content'),
   );
   $items['test-service/cancel-reservation'] = array(
@@ -122,18 +126,76 @@ function test_service_menu() {
     'access arguments' => array('access content'),
   );
   
-
+  $items['admin/structure/test-service/%/status'] = array(
+    'title' => 'Status',
+    'description' => 'Javascript status call back.',
+    'page callback' => 'test_service_status',
+    'page arguments' => array(3),
+    'load arguments' => array(3, TRUE),
+    // 'access callback' => 'user_access',
+    // 'access arguments' => array('administer services'),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'test_service.admin.inc',
+  );
+  $items['admin/structure/test-service'] = array(
+    'title' => 'Services status check',
+    'description' => 'Manage services.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('test_service_admin_form'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'test_service.admin.inc',
+  );
+    $items['admin/structure/test-service/manage'] = array(
+    'title' => 'Manage',
+    'description' => 'Monitor services.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('test_service_admin_form'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'file' => 'test_service.admin.inc',
+  );
+  foreach ($items as $path => $item) {
+    if (!isset($item['access callback'])) {
+      $items[$path]['access callback'] = 'user_access';
+      // $items[$path]['access arguments'] = array('manage services');
+      $items[$path]['access arguments'] = array('access content');
+    }
+  }
   return $items;
 }
-function test_service_get_list_od() {
-  $service = messagequeue_service_load('get_od_pair');
-  $result = $service->invoke(array());
-  print_r($result);exit;
+
+/**
+ * Implements hook_theme().
+ */
+function test_service_theme() {
+  $items = array();
+  $base = array(
+    'path' => drupal_get_path('module', 'test_service'),
+    'file' => 'test_service.theme.inc',
+  );
+  $items['test_service_form_package'] = array(
+    'render element' => 'form',
+  ) + $base;
+  $items['test_service_storage_link'] = array(
+    'variables' => array('storage' => null, 'text' => null, 'path' => null, 'options' => array()),
+  ) + $base;
+  
+  return $items;
+}
+
+function test_service_get_od_pair() {
+    $service = messagequeue_service_load('get_od_pair');
+    $result = $service->invoke(array());
+    if (isset($result->ListODOutput->ODReferenceDataOutputs->ODReferenceDataOutput)) {
+      $return['status'] = 1;
+      $return['message'] = t('Loaded %number OD pairs successfully!!!', array('%number' => count($result->ListODOutput->ODReferenceDataOutputs->ODReferenceDataOutput)));
+    }
+    return $return;
 }
 function test_service_cancel_reservation(){
   $service =  messagequeue_service_load('cancel_reservation');
   $result = $service->invoke(array('pnrReference' => 'ABCDEF'));
-  print_r($result);exit;
+  //print_r($result);exit;
   // Check status and set return value.
   if ($result['status']) {
     $return = $result['data'];
@@ -301,7 +363,7 @@ function test_service_validate_proposal() {
   
   
   $result = $service->invoke($params);
-  print_r($result);exit;
+  //print_r($result);exit;
 }
 
 function test_service_authorize_card() {
@@ -326,7 +388,7 @@ function test_service_authorize_card() {
   $service =  messagequeue_service_load('authorize_card');
   $service->setHeaders(array('authorizeRetryCount' => 1));
   $result = $service->invoke($params);
-  print_r($result);exit;
+  //print_r($result);exit;
 }
 
 function test_service_authorize_card_cc_token() {
@@ -354,7 +416,7 @@ function test_service_authorize_card_cc_token() {
   $service =  messagequeue_service_load('authorize_card_cc_token');
   $service->setHeaders(array('authorizeRetryCount' => 1));
   $result = $service->invoke($params);
-  print_r($result);exit;
+  //print_r($result);exit;
 }
 
 function test_service_modify_passenger_data() {
@@ -373,7 +435,7 @@ function test_service_modify_passenger_data() {
   $service =  messagequeue_service_load('modify_passenger_data');
   // $service->stub = TRUE;
   $result = $service->invoke($params);
-  print_r($result);exit;
+  //print_r($result);exit;
 }
 function test_service_finalize_exchange() {
   $start = time() + 10001;
@@ -439,7 +501,7 @@ function test_service_finalize_exchange() {
   $service->setHeaders(array('operation' => 'exchange'));
   // $service->stub = TRUE;
   $result = $service->invoke($params);
-  print_r($result);exit;
+  //print_r($result);exit;
   
 
 }
@@ -448,7 +510,7 @@ function test_service_get_booking_quotation_by_period() {
   $service =  GetBookingQuotationByPeriod::create();
   $service->stub = TRUE;
   $result = $service->getPropositionsForMonth(1330905600);
-  print_r($result);exit;
+  //print_r($result);exit;
 }
 
 function test_service_manage_user() {
