@@ -123,6 +123,7 @@ table.features td.sign * {
 }
 
 table.features .admin-check,
+table.features .admin-reload,
 table.features .admin-default,
 table.features .admin-overridden,
 table.features .admin-rebuilding,

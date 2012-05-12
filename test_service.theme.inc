@@ -7,12 +7,14 @@ function theme_test_service_storage_link($vars) {
     TEST_SERVICE_RUNNING => 'admin-default',
     TEST_SERVICE_FAILING => 'admin-overridden',
     TEST_SERVICE_CHECKING => 'admin-loading',
+    TEST_SERVICE_RELOAD => 'admin-reload',
   );
   $default_text = array(
     TEST_SERVICE_RUNNING => t('Running'),
     TEST_SERVICE_FAILING => t('Failing'),
     TEST_SERVICE_CHECKING => t('Checking...'),
-  );
+    TEST_SERVICE_RELOAD => 'R',
+    );
   $text = isset($vars['text']) ? $vars['text'] : $default_text[$vars['storage']];
   if ($vars['path']) {
     $vars['options']['attributes']['class'][] = $classes[$vars['storage']];

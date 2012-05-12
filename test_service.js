@@ -57,6 +57,36 @@
           $('.feature-name').keyup();
         }
       });
+      $('table.features tbody tr a.admin-reload').click(function(e) {
+        e.preventDefault();
+          var elem = $(this).parent().parent();
+          // hide all element and show only loading.
+          $(elem).find('.state span, .state a').hide();
+          $(elem).find('.admin-loading').show();
+          $(elem).find('.status').html('Fetching ...');
+          $(elem).addClass('processed');
+          var uri = $(elem).find('a.admin-check').attr('href');
+          if (uri) {
+            $.get(uri, [], function(data) {
+              $(elem).find('.admin-loading').hide();
+              $(elem).find('.admin-reload').show();
+              if (data.status == null) {
+                 var data = {"status":2, "Message":"Service doesn't return proper status. try again!!!" };
+              }
+              switch (data.status) {
+                case 1:
+                  $(elem).find('.admin-default').show();
+                  $(elem).find('.status').html(data.message);
+                  break;
+                default:
+                  $(elem).find('.admin-overridden').show();
+                  $(elem).find('.status').html(data.message);
+                  break;
+              }
+              // Drupal.test_service.checkItemStatus();
+            }, 'json');
+          }
+        });
     }
   }
 
@@ -70,6 +100,10 @@
         if (uri) {
           $.get(uri, [], function(data) {
             $(elem).find('.admin-loading').hide();
+            $(elem).find('.admin-reload').show();
+            if (data == null) {
+              var data = {"status":2, "Message":"Service doesn't return proper status. try again!!!" };
+            }
             switch (data.status) {
               case 1:
                 $(elem).find('.admin-default').show();
@@ -87,10 +121,8 @@
             Drupal.test_service.checkStatus();
           }
       });
-    }
+    },
   };
-
-
 })(jQuery);
 
 

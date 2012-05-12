@@ -54,13 +54,14 @@ function test_service_admin_form($form, $form_state) {
     $form[$package]['status'][$name] = array(
       '#type' => 'item',
       '#title' => $service->machine_name,
-      '#description' => $service->description,
+      '#description' => truncate_utf8($service->description, 40, FALSE, TRUE),
     );
     $href = '';
     $state = theme('test_service_storage_link', array('storage' => TEST_SERVICE_CHECKING, 'path' => $href));
     $state .= l(t('Check'), "admin/structure/test-service/{$name}/status", array('attributes' => array('class' => array('admin-check'))));
     $state .= theme('test_service_storage_link', array('storage' => TEST_SERVICE_RUNNING, 'path' => $href));
     $state .= theme('test_service_storage_link', array('storage' => TEST_SERVICE_FAILING, 'path' =>  $href));
+    $state .= theme('test_service_storage_link', array('storage' => TEST_SERVICE_RELOAD, 'path' => '#'));
     
     $form[$package]['state'][$name] = array(
       '#markup' => $state,

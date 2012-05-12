@@ -8,6 +8,7 @@
 
 define('TEST_SERVICE_RUNNING', 1);
 define('TEST_SERVICE_FAILING', 2);
+define('TEST_SERVICE_RELOAD', 3);
 define('TEST_SERVICE_CHECKING', 6);
 
 /*
@@ -16,15 +17,24 @@ define('TEST_SERVICE_CHECKING', 6);
  
 function test_service_menu() {
   $items = array();
-  $items['test-service/address-finder-form'] = array(
+  $items['test-service/get-hotel-availability'] = array(
     'title' => 'Address services',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('test_service_address_finder_form'),
+    'page callback' => 'test_service_get_hotel_availability',
     'access arguments' => array('access content'),
   );
-  $items['test-service/address-finder'] = array(
+  $items['test-service/create-lite-customer'] = array(
     'title' => 'Address services',
-    'page callback' => 'test_service_address_finder',
+    'page callback' => 'test_service_create_lite_customer',
+    'access arguments' => array('access content'),
+  );
+  $items['test-service/generate-pah'] = array(
+    'title' => 'Address services',
+    'page callback' => 'test_service_generate_pah',
+    'access arguments' => array('access content'),
+  ); 
+  $items['test-service/find-address'] = array(
+    'title' => 'Address services',
+    'page callback' => 'test_service_find_address',
     'access arguments' => array('access content'),
   );
   $items['test-service/finalize-refund'] = array(
@@ -64,6 +74,22 @@ function test_service_menu() {
     'page callback' => 'test_service_get_od_pair',
     'access arguments' => array('access content'),
   );
+  $items['test-service/get-booking-horizon'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_get_booking_horizon',
+    'access arguments' => array('access content'),
+  ); 
+  $items['test-service/get-list-credit-card-fees'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_get_list_credit_card_fees',
+    'access arguments' => array('access content'),
+  );
+  $items['test-service/get-booking-quotation'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_get_booking_quotation',
+    'access arguments' => array('access content'),
+  );
+  
   $items['test-service/cancel-reservation'] = array(
     'title' => 'Testing services',
     'page callback' => 'test_service_cancel_reservation',
@@ -184,13 +210,65 @@ function test_service_theme() {
 }
 
 function test_service_get_od_pair() {
-    $service = messagequeue_service_load('get_od_pair');
-    $result = $service->invoke(array());
-    if (isset($result->ListODOutput->ODReferenceDataOutputs->ODReferenceDataOutput)) {
-      $return['status'] = 1;
-      $return['message'] = t('Loaded %number OD pairs successfully!!!', array('%number' => count($result->ListODOutput->ODReferenceDataOutputs->ODReferenceDataOutput)));
+  $service = messagequeue_service_load('get_od_pair');
+  $od = $service->invoke(array());
+  if (!empty($od)) {
+    $count = count($od->ListODOutput->ODReferenceDataOutputs->ODReferenceDataOutput);
+      return array(
+        'status' => 1,
+        'message' => t('Loaded %number OD pairs successfully!!!', array('%number' => $count)),
+      );
     }
-    return $return;
+    return test_service_get_default();
+}
+function test_service_get_booking_horizon() {
+  $booking_horizon = origin_destination_get_booking_horizon_data();
+  if (!empty($booking_horizon)) {
+    $count = count($booking_horizon->ListBookingHorizonOutput->BookingHorizons->BookingHorizon);
+    return array(
+      'status' => 1,
+      'message' => t('Loaded %number booking horizon data successfully!!!', array('%number' => $count)),
+    );
+  }
+  return test_service_get_default();
+}
+
+function test_service_get_list_credit_card_fees() {
+  $fees = itinerary_get_credit_card_fees();
+  if ($fees->getFees()) {
+    $fees_details = $fees->getFees();
+    $cards = implode(', ', array_keys($fees_details['charges']));
+    return array(
+      'status' => 1,
+      'message' => t('Retrieved surcharges for  %cards card(s) successfully!!!', array('%cards' => $cards)),
+    );
+  }
+  return test_service_get_default();
+}
+function test_service_get_booking_quotation() {
+  $origin_destination = entity_load('origin_destination', FALSE, array('origin_code' => 'GBLON', 'destination_code' => 'FRPAR'));
+  if (empty($origin_destination)) {
+    watchdog('test_service', t('Error while testing %origin to %destination', array('%origin' => 'GBLON', '%destination' => 'FRPAR',)));
+  }
+  $origin_destination = array_pop($origin_destination);
+  $search_criteria = array(
+    'origin_destination' => $origin_destination,
+    'depart' => strtotime('+2 days 6 am'),
+    'adult' => '2',
+    'senior' => '1',
+    'youth' => '0',
+    'child' => '0',
+    'return' => strtotime('+5 days 11 am'),
+  );
+  $train_search = new TrainSearch($search_criteria['origin_destination'], $search_criteria['depart'], $search_criteria['adult'], $search_criteria['senior'], $search_criteria['youth'], $search_criteria['child'], $search_criteria['return']);
+  $outward_proposals = $train_search->getProposalsForDay(Journey::$TYPE_OUTWARD);
+  if (!empty($outward_proposals)) {
+    return array(
+      'status' => 1,
+      'message' => t('Retrieved %journey_type proposals successfully!!!', array('%journey_type' => Journey::$TYPE_OUTWARD)),
+    );
+  }
+  return test_service_get_default();
 }
 function test_service_cancel_reservation(){
   $service =  messagequeue_service_load('cancel_reservation');
@@ -254,7 +332,6 @@ function test_service_exchange_outbound() {
 }
 
 function test_service_exchange_inbound() {
-  // $service =  messagequeue_service_load('get_exchange_proposal');
   $passengers = array(
     array('first_name' => 'F1', 'last_name' => 'L1', 'passenger_id' => 1),
     array('first_name' => 'F2', 'last_name' => 'L2', 'passenger_id' => 2),
@@ -507,10 +584,31 @@ function test_service_finalize_exchange() {
 }
 
 function test_service_get_booking_quotation_by_period() {
-  $service =  GetBookingQuotationByPeriod::create();
-  $service->stub = TRUE;
-  $result = $service->getPropositionsForMonth(1330905600);
-  //print_r($result);exit;
+  $origin_destination = entity_load('origin_destination', FALSE, array('origin_code' => 'GBLON', 'destination_code' => 'FRPAR'));
+  if (empty($origin_destination)) {
+    watchdog('test_service', t('Error while testing %origin to %destination', array('%origin' => 'GBLON', '%destination' => 'FRPAR',)));
+  }
+  $origin_destination = array_pop($origin_destination);
+  $search_criteria = array(
+    'origin_destination' => $origin_destination,
+    'depart' => strtotime('+7 days 6 am'),
+    'adult' => '2',
+    'senior' => '1',
+    'youth' => '0',
+    'child' => '0',
+    'return' => strtotime('+37 days 11 am'),
+  );
+  $train_search = new TrainSearch($search_criteria['origin_destination'], $search_criteria['depart'], $search_criteria['adult'], $search_criteria['senior'], $search_criteria['youth'], $search_criteria['child'], $search_criteria['return']);
+
+  $start_date = $train_search->getPeriodStartDate();
+  $proposals = $train_search->getProposalsForPeriod(Journey::$TYPE_OUTWARD, $start_date);
+  if (!empty($proposals)) {
+    return array(
+      'status' => 1,
+      'message' => t('Retrieved %journey_type period proposals successfully!!!', array('%journey_type' => Journey::$TYPE_OUTWARD)),
+    );
+  }
+  return test_service_get_default();
 }
 
 function test_service_manage_user() {
@@ -648,21 +746,6 @@ function test_service_checkout() {
   echo $checkout->getTransactionState();exit;
 }
 
-function test_service_retrieve_customer() {
-  $service = RetrieveCustomer::create();
-  // $service->stub = TRUE;
-  // $service->customer_number = 608;
-   $service->email = 'estar197@uk.com';
-  $service->invoke();
-  /*
-  $user = new stdClass();
-  $user->field_user_title = 'dd';
-  $user->field_user_first_name = 'dd';
-  // print_r($service->getUser($user));
-   
-   */
-}
-
 function test_service_load_travel() {
   $service = LoadTravel::create();
   $service->setPnr('ABCDEF');/*
@@ -675,8 +758,7 @@ function test_service_load_travel() {
   $service->invoke();*/
   $service->setPassengerInformation('LASTNAME', 'me@mail.com', 'eft121212112', 'creditcard121212121');
   $passenger = $service->getPassengerInformation();
-  print_r($passenger);exit;
-  
+  return;
 }
 
 function test_service_refund_proposal() {
@@ -726,31 +808,112 @@ function test_service_finalize_refund() {
   $service->invoke();
 }
 
-function test_service_address_finder() {
+function test_service_find_address() {
     $paf_service = AddressFinder::create();
-    $paf_service->stub = FALSE;
-    $paf_service->postcode = 'NB12 12F';
+    $paf_service->stub = TRUE;
     $paf_service->propertyDetail = '';
     $paf_service->invoke();
     $address = $paf_service->getAddress();
-    print_r($address);exit;
+    if (isset($address)) {
+      return array(
+        'status' => 1,
+        'message' => t('Address service working successfully!!!')
+      );
+    }
+    return test_service_get_default();
   
 }
-function test_service_address_finder_form($form, &$form_state) {
-  $form['title'] = array(
-    '#type' => 'textfield',
-    '#title' => t('first name'),
-  );
-  $form['paf'] = array(
-    '#type' => 'paf',
-    '#title' => t('Your address'),
-  );
-  $form['go'] = array(
-    '#type' => 'submit',
-    '#value' => t('Save profile'),
-  );
-  return $form;
-}
+
 function test_service_address_finder_form_submit($form, &$form_state) {
   print_r($form_state['values']);exit;
+}
+
+function test_service_get_hotel_availability() {
+  $hotel_search = test_service_call_get_hotel_availability();
+  $hotels = $hotel_search->getHotels();
+  list($start_date, $end_date) = explode(',', $hotel_search->getDateRange());
+  if(isset($hotels)) {
+    $hotel_details = array(
+      '%number' => $hotel_search->getHotelCount(),
+      '%start_date' => $start_date,
+      '%end_date' => $end_date,
+      '%city' => $hotel_search->getScope(),
+    );
+    return array(
+      'status' => 1,
+      'message' => t('found %number hotel(s) to stay from %start_date to %end_date in %city', $hotel_details),
+    );
+  }
+  return test_service_get_default();
+}
+
+function test_service_call_get_hotel_availability(){
+  $scope_type = 'City';
+  $scope =array('London','London','GB');
+  $room_occupancy = array('NumAdults' => 2, 'NumChildren' => array(1), 'NumSeniors' => 1);
+  $date_range = array(
+    'start' => date('Y-m-d', time()+(2*24*60*60)),
+    'end' => date('Y-m-d', time()+(4*24*60*60)),
+  );
+  $class_of_service = NULL;
+  $display_options = array();
+  $service_path = 'BP';
+  $hotel_name = NULL;
+  $hotel_rating = NULL;
+  $hotel_amenities = NULL;
+  // Load hotel availability object
+  $hotel_search = messagequeue_service_load('get_hotel_availability');
+  // Set the scope for the search
+  $hotel_search->setScope($scope_type, $scope);
+  // Set the RoomOccupancy expected is an array('NumAdults' => 1, 'NumChildren' => array(5, 10), 'NumSeniors' => 0)
+  
+  $hotel_search->setRoomOccupancy($room_occupancy);
+  $hotel_search->setDateRange($date_range['start'], $date_range['end']);
+  $hotel_search->setDisplayOptions($display_options);
+  if (!is_null($class_of_service)) $hotel_search->setClassOfService($class_of_service);
+  // @todo Change to pass service path in AS or BP  
+  $hotel_search->setServicePath($service_path);
+  if (!is_null($hotel_name)) $hotel_search->setNameFilter($hotel_name);
+  if (!is_null($hotel_rating)) $hotel_search->setStarRating($hotel_rating);
+  if (!is_null($hotel_amenities)) $hotel_search->setAmenities($hotel_amenities);
+  $hotel_search->invoke();
+  return $hotel_search;
+}
+function test_service_generate_pah() {
+  
+}
+
+function test_service_create_lite_customer() {
+  $email = uniqid().'.servic_test@localhost.com';
+  if ($iloyal_customer_id = UserEntityWrapper::createLiteAccount($email)) {
+    return array(
+      'status' => 1,
+      'message' => t('lite user created(customer id:@customer_id) with email id: @mail', array('@customer_id' => $iloyal_customer_id,'@mail' => $email)),
+    );
+  }
+  return test_service_get_default();
+}
+
+function test_service_retrieve_customer() {
+  $email = uniqid().'.servic_test@localhost.com';
+  if ($iloyal_customer_id = UserEntityWrapper::createLiteAccount($email)) {
+    $user_serivce = RetrieveCustomer::create();
+    $user_serivce->customer_number = $iloyal_customer_id;
+    $user_serivce->invoke();
+    $response_email  =(string) current($user_serivce->getResponse()->xpath('//memberContactInfos/emailAddress'));
+    if ($response_email == $email) {
+      return array(
+        'status' => 1,
+        'message' => t('Retrived user details from iLoyal for customer-id:@customer_id', array('@customer_id' => $iloyal_customer_id)),
+      );
+    }
+  }
+  return test_service_get_default();
+}
+
+function test_service_get_default() {
+  return array(
+    'status' => 2,
+    'message' => t('Caution: Your service is failing without any exception!'),
+  );
 }
