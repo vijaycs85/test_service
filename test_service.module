@@ -17,6 +17,12 @@ define('TEST_SERVICE_CHECKING', 6);
  
 function test_service_menu() {
   $items = array();
+  $items['test-service/get-train-schedule/search'] = array(
+    'title' => 'Address services',
+    'page callback' => 'train_schedule_search_form',
+    'access arguments' => array('access content'),
+    'file' => 'includes/train_schedule_search_form.inc',
+  );
   $items['test-service/get-train-schedule/%/%/%'] = array(
     'title' => 'Address services',
     'page callback' => 'test_service_get_train_schedule',
@@ -986,105 +992,4 @@ function test_service_psp_refund() {
   echo $service->getDatacashReference();
   echo "<br>";
   echo $service->getMerchantReference();
-}
-
-
-function test_service_get_train_schedule() {
-  // Include calendar picker JS
-  drupal_add_js(drupal_get_path('module', 'standard_booking_path') . '/js/date_picker.js');
-
-  $origin = arg(2);
-  $destination = arg(3);
-  $default_details['depart'] = arg(4);
-  $default_details['return'] = arg(5);
-  $search = new TrainScheduleSearch(test_service_get_od($origin, $destination), $default_details['depart']);
-
-  // Convert timestamp value.
-  if (!empty($default_details['depart'])) {
-    $depart_value = date('D j Y', $default_details['depart']);
-  }
-  if (!empty($default_details['return'])) {
-    $return_value = date('D j Y', $default_details['return']);
-  }
-
-  // Settings for calendar picker.
-  // @TODO:set from horizon data.
-  $dp_settings = array(
-    'datePicker' => array(
-      'maxDate' => '+90d',
-      'minDate' => '+0d'
-    )
-  );
-  drupal_add_js($dp_settings, 'setting');
-  if ($outbound_od = test_service_get_od($origin, $destination)) {
-    $form['depart_label'] = array(
-      '#type' => 'markup',
-      '#markup' => t('@from to @to', array('@from' => $search->od->getOriginName(), '@to' => $search->od->getDestinationName())),
-    );
-    $form['depart'] = array(
-      '#title' => t('Departs'),
-      '#type' => 'textfield',
-      '#attributes' => array('class' => array('date-picker depart-date')),
-      '#default_value' => isset($depart_value) ? $depart_value : date('D j Y', strtotime('today')),
-    );
-    $form['outbound_result'] = array(
-      '#type' => 'markup',
-      '#markup' => test_service_get_train_schedule_result(Journey::$TYPE_OUTWARD, $outbound_od, $default_details['depart'])
-    );
-  }
-  if ($inbound_od = test_service_get_od($destination, $origin)) {
-    $form['return_label'] = array(
-      '#type' => 'markup',
-      '#markup' => t('@from to @to', array('@from' => $search->od->getDestinationName(), '@to' => $search->od->getOriginName())),
-    );
-    $form['return'] = array(
-      '#title' => t('Departs'),
-      '#type' => 'textfield',
-      '#attributes' => array('class' => array('date-picker return-date')),
-      '#default_value' => isset($depart_value) ? $depart_value : date('D j Y', strtotime('today')),
-    );
-
-    $form['inbound_result'] = array(
-      '#type' => 'markup',
-      '#markup' => test_service_get_train_schedule_result(Journey::$TYPE_INWARD, $inbound_od, $default_details['return'])
-    );
-  }
-  return $form;
-}
-
-function test_service_get_train_schedule_result($type, $origin_destination, $timestamp) {
-  $service = GetTrainSchedule::create();
-  $service->setOD($origin_destination);
-  $service->setTravelDateFromTimestamp($timestamp);
-  $service->stub = TRUE;
-  $service->invoke();
-
-  $proposals = $service->getProposal($type);
-  foreach ($proposals as $proposal) {
-    $carriers = array();
-    foreach ($proposal->getCarriers() as $carrier) {
-      $carriers[] = $carrier->getName();
-    }
-    if (!$proposal->isDirect()) {
-      $change_text = l(t('@count changes', array('@count' => ($proposal->getSegmentCount() - 1))), '');
-    }
-
-    $rows[] = array ($proposal->departure_date->format('H:i'), $proposal->arrival_date->format('H:i'), _standard_booking_path_minutes_to_hours($proposal->duration), implode(', ', $carriers).$change_text);
-  }
-  if (count($rows)) {
-    $header = array(t('Depart'), t('Arrive'), t('Duration'), t('Carrier'));
-    return theme('table',  array('header' => $header, 'rows' => $rows));
-  }
-
-  // @todo: return empty message for no train.
-  return FALSE; 
-}
-function test_service_get_od($origin, $destination) {
-  $od = array('origin_code' => $origin, 'destination_code' => $destination);
-  $origin_destination = entity_load('origin_destination', FALSE, $od);
-  if (empty($origin_destination)) {
-    watchdog('test_service', t('Error while testing %origin to %destination', array('%origin' => $origin, '%destination' => $destination,)));
-    return FALSE;
-  }
-  return array_pop($origin_destination);
 }
