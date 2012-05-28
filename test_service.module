@@ -17,11 +17,10 @@ define('TEST_SERVICE_CHECKING', 6);
  
 function test_service_menu() {
   $items = array();
-  $items['test-service/get-train-schedule/search'] = array(
+  $items['test-service/test'] = array(
     'title' => 'Address services',
-    'page callback' => 'train_schedule_search_form',
+    'page callback' => 'test_service_test',
     'access arguments' => array('access content'),
-    'file' => 'includes/train_schedule_search_form.inc',
   );
   $items['test-service/get-train-schedule/%/%/%'] = array(
     'title' => 'Address services',
@@ -993,3 +992,20 @@ function test_service_psp_refund() {
   echo "<br>";
   echo $service->getMerchantReference();
 }
+
+function test_service_test($mid, $message) {
+  $values = array(
+    'mid' => 0,
+    'vid' => 0,
+    'language' => LANGUAGE_NONE,
+    'uid' => 1,
+    'revision' => NULL,
+    'created' => 0,
+    'changed' => 0,
+    'log' => NULL, 
+    'cms_dynamic_message' => array(LANGUAGE_NONE => array(0 => array('value' => "testing messages"))),
+    'cms_dynamic_message_event' => array(LANGUAGE_NONE => array(0 => array('value' => "test_test"))),
+  );
+  $entity = cms_dynamic_messages_save((object) $values);
+}
+
