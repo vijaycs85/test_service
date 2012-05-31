@@ -994,6 +994,11 @@ function test_service_psp_refund() {
 }
 
 function test_service_test($mid, $message) {
+  $service = messagequeue_service_load('get_booking_horizon');
+  $result = $service->invoke(array());
+  print_r($result);exit;
+  _test_service_test_dynamic_messages();
+  /*
   $values = array(
     'mid' => 0,
     'vid' => 0,
@@ -1007,5 +1012,78 @@ function test_service_test($mid, $message) {
     'cms_dynamic_message_event' => array(LANGUAGE_NONE => array(0 => array('value' => "test_test"))),
   );
   $entity = cms_dynamic_messages_save((object) $values);
+  */
 }
 
+
+/**
+ * Create dynamic messages.
+ */
+function _test_service_test_dynamic_messages() {
+  $dm = array(
+    array(
+      'text' => 'Your tickets are semi-flexible',
+      'event' => 'ticket_flexibility_semi',
+      'language' => 'uk-EN',
+    ),
+    array(
+      'text' => 'Vos billets sont semi-flexible',
+      'event' => 'ticket_flexibility_semi',
+      'language' => 'fr-FR',
+    ),
+    array(
+      'text' => 'Your journey between [cancel-origin] and [cancel-desination] is partially refundable. You will be refunded 50% of you purchase price if you cancel.',
+      'event' => 'cancel_train_flexibility_semi',
+      'language' => 'uk-EN',
+    ),
+    array(
+      'text' => 'Votre voyage entre  [cancel-origin] et [cancel-destination] est partiellement remboursable. Vous serez remboursé 50% d\'entre vous le prix d\'achat si vous annulez.',
+      'event' => 'cancel_train_flexibility_semi',
+      'language' => 'fr-FR',
+    ),
+    array(
+      'text' => 'Your journey between [cancel-origin] and [cancel-destination] fully refundable. You will see a full refund if you cancel',
+      'event' => 'cancel_train_flexibility_full',
+      'language' => 'uk-EN',
+    ),
+    array(
+      'text' => 'Votre voyage Entre [cancel-origin]et [cancel-destination] overall remboursable. Vous verrez non Remboursement intéal si Vous annulez',
+      'event' => 'cancel_train_flexibility_full',
+      'language' => 'fr-FR',
+    ),
+  );
+  $defaults = array(
+    'mid' => 0,
+    'vid' => 0,
+    'language' => 'uk-EN',
+    'uid' => 1,
+    'revision' => NULL,
+    'created' => 0,
+    'changed' => 0,
+    'log' => NULL,
+  ); 
+  foreach ($dm as $message) {
+    $lang = 'uk-EN';
+    if (isset($message['language'])) {
+      $lang = $message['language'];
+    }
+    $msg = $event = array();
+    $msg[$lang][0] = array(
+      'value' => $message['text'],
+      'format' => 0,
+    );
+    $event[$lang][0] = array(
+      'value' => $message['event'],
+      'format' => 0,
+    );
+
+    $item = array(
+       'cms_dynamic_message' => $msg,
+       'cms_dynamic_message_event' => $event,
+       'language' => $lang,
+       'is_new' => TRUE,
+    ) + $defaults;
+    
+    $entity = cms_dynamic_messages_save((object)$item);
+  }
+}
