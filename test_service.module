@@ -241,13 +241,14 @@ function test_service_theme() {
 }
 
 function test_service_get_od_pair() {
-  // return origin_destination_begin_import();
+  return origin_destination_begin_import();
   $service = GetListOd::create();
   $service->stub = TRUE;
   $service->invoke();
   $parser = $service->getProcessor();
   // $parser->loadXmlFile($service->getFile(drupal_realpath(file_default_scheme() . '://')));
   $parser->loadXml($service->getData());
+  $version = $parser->getVersion();
   while ($od = $parser->next()){
     $item = new OdReferenceData($od);
     print_r($item);
