@@ -17,6 +17,12 @@ define('TEST_SERVICE_CHECKING', 6);
 
 function test_service_menu() {
   $items = array();
+  $items['test-service/form'] = array(
+    'title' => 'Address services',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('test_service_form'),
+    'access arguments' => array('access content'),
+  );
   $items['test-service/test'] = array(
     'title' => 'Address services',
     'page callback' => 'test_service_test',
@@ -1107,4 +1113,13 @@ function _test_service_test_dynamic_messages() {
 
     $entity = cms_dynamic_messages_save((object)$item);
   }
+}
+
+function test_service_form($form, &$from_state) {
+  //  module_load_include('inc', 'standard_booking_path', 'includes/standard_booking_path.login_form');
+  //$form = standard_booking_path_login_form($form, $from_state);
+  
+  module_load_include('inc', 'user_account_management', 'includes/user_account_management.payment_cards');
+  $form += _user_account_management_payment_card_fields(100, $form_state);
+  return $form;
 }
