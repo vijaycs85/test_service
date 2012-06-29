@@ -1116,10 +1116,111 @@ function _test_service_test_dynamic_messages() {
 }
 
 function test_service_form($form, &$from_state) {
+  global $user;
+  $account = user_load($user->uid);
+  $user_wrapper = extended_entity_wrapper('user', $account, array(), 'UserEntityWrapper');
+  favourite_traveller_picker_include_js();
   //  module_load_include('inc', 'standard_booking_path', 'includes/standard_booking_path.login_form');
   //$form = standard_booking_path_login_form($form, $from_state);
-  
-  module_load_include('inc', 'user_account_management', 'includes/user_account_management.payment_cards');
-  $form += _user_account_management_payment_card_fields(100, $form_state);
+  module_load_include('inc', 'standard_booking_path', 'includes/standard_booking_path.traveller_details');
+  $form['traveler_details']['traveler_details_wrapper']['adults'] = array(
+    '#type' => 'item',
+  );
+  $adults = array(
+    new Passenger(1.1, 'First name' ,'Last name'),
+  );
+  $title_options = $user_wrapper->getTitlesOptions();
+  $favourite_travellers = $user_wrapper->getAllTravellers();
+  $meal_options = array(
+    'BSC' => 'Meal 1',
+    'BSC2' => 'Meal 2',
+  );
+  $form['traveler_details']['traveler_details_wrapper']['adults'] += test_service_support_get_element(t('Adult'), $adults, $title_options, $membership_prefix, $meal_options, $defaults, $favourite_travellers, $selected_favorite_traveller, $train_search);
+  $form['#attributes'] = array('class' => array('standard_booking_path_travellers_details_form'));
+  // $form += _user_account_management_payment_card_fields(100, $form_state);
+  return $form;
+}
+
+
+function test_service_support_get_element($title, $passengers, $title_options = array(), $membership_prefix = '', $meal_options = array(), $values = array(), $favorite_travellers = array(), $favorite_traveller_id = NULL) {
+  // Generate Favorite Travellers widget
+  foreach($favorite_travellers as $key => $traveller) {
+    $traveller_options[$key] =
+    implode(', ', array_filter(array(
+      implode(' ', array_filter(array(
+        UserEntityWrapper::getTitleName($traveller->title),
+        $traveller->first_name,
+        $traveller->last_name,
+      ))),
+      train_tickets_meal_name($traveller->meal),
+      $traveller->member_no,
+    )));
+  }
+
+  // Set values if favorite_traveller has been selected
+  if ($favorite_traveller_id !== NULL) {
+    $values += array(
+      'title' => $favorite_travellers[$favorite_traveller_id]->title,
+      'first_name' => $favorite_travellers[$favorite_traveller_id]->first_name,
+      'last_name' => $favorite_travellers[$favorite_traveller_id]->last_name,
+      'meal' => $favorite_travellers[$favorite_traveller_id]->meal,
+      'membership' => $favorite_travellers[$favorite_traveller_id]->member_no,
+    );
+  }
+
+  // Generate fields
+  $form = array();  //safety - default return value
+  $index = 1;
+  foreach($passengers as $passenger) {
+    $id = $passenger->id;
+    $type = $passenger->type;
+    $traveller = str_replace('.', '_', $type . '_' . $id);
+    $ages = 30;
+    $traveller_ages = $ages[$title . "_" . $index];
+    if (!empty($traveller_ages)) {
+      $row_title = $title . " " . $index . "(" . $traveller_ages . "years)";
+    }
+    else {
+      $row_title = $title . " " . $index;
+    }
+    $row_wrapper = 'favourite-traveller-' . $traveller;
+
+    $form[$traveller] = array(
+      '#type' => 'traveller',
+      '#title_options' => $title_options,
+      '#membership_prefix' => $membership_prefix,
+      '#meal_options' => !empty($meal_options)?(array('' => t('Please select')) + $meal_options):NULL,
+      '#default_value' => isset($values[$type][$id])?$values[$type][$id]:(isset($values[$type])?$values[$type]:(isset($values)?$values:array())),
+      '#required' => TRUE,
+      '#prefix' => '<div id="' . $row_wrapper .'">',
+      '#suffix' => '</div>',
+      '#weight' => $index * 13, //multiplying by 13 to stop elements having the same weight
+    );
+
+    if(!empty($favorite_travellers)){
+      $form['_' . $traveller] = array(
+        '#type' => 'select',
+        '#title' => $row_title,
+        '#options' => array('NONE' => t('No preference')) + $traveller_options,
+        '#prefix' => '<div class="favourite-traveller-selector favourite-traveller-'. $index .'">',
+        '#suffix' => '</div>',
+        '#ajax1' => array(
+          'callback' => 'standard_booking_path_travellers_details_type_dropdown_callback',
+          'wrapper' => $row_wrapper,
+          'method' => 'replace',
+          'effect' => 'fade'),
+        '#weight' => $index * 13 - 1,
+        '#attributes' => array('class' => array('favourite-traveller-picker')),
+      );
+      
+      $form[$traveller]['#title'] = NULL;
+    }
+    else {
+      $form[$traveller]['#title'] = $row_title;
+    }
+
+    $index++;
+  }
+
   return $form;
 }
