@@ -1128,13 +1128,15 @@ function test_service_form($form, &$from_state) {
   );
   $adults = array(
     new Passenger(1.1, 'First name' ,'Last name'),
+    new Passenger(1.2, 'First name' ,'Last name'),
   );
   $title_options = $user_wrapper->getTitlesOptions();
-  $favourite_travellers = $user_wrapper->getAllTravellers();
+  $favourite_travellers = $user_wrapper->getAllTravellersById();
   $meal_options = array(
     'BSC' => 'Meal 1',
     'BSC2' => 'Meal 2',
   );
+  $form['traveler_details']['traveler_details_wrapper']['adults'] += test_service_support_get_element(t('Adult'), $adults, $title_options, $membership_prefix, $meal_options, $defaults, $favourite_travellers, $selected_favorite_traveller, $train_search);
   $form['traveler_details']['traveler_details_wrapper']['adults'] += test_service_support_get_element(t('Adult'), $adults, $title_options, $membership_prefix, $meal_options, $defaults, $favourite_travellers, $selected_favorite_traveller, $train_search);
   $form['#attributes'] = array('class' => array('standard_booking_path_travellers_details_form'));
   // $form += _user_account_management_payment_card_fields(100, $form_state);
@@ -1143,19 +1145,22 @@ function test_service_form($form, &$from_state) {
 
 
 function test_service_support_get_element($title, $passengers, $title_options = array(), $membership_prefix = '', $meal_options = array(), $values = array(), $favorite_travellers = array(), $favorite_traveller_id = NULL) {
-  // Generate Favorite Travellers widget
-  foreach($favorite_travellers as $key => $traveller) {
-    $traveller_options[$key] =
-    implode(', ', array_filter(array(
-      implode(' ', array_filter(array(
-        UserEntityWrapper::getTitleName($traveller->title),
-        $traveller->first_name,
-        $traveller->last_name,
-      ))),
-      train_tickets_meal_name($traveller->meal),
-      $traveller->member_no,
-    )));
+  if (!empty($favorite_travellers)) {
+     global $user;
+     $account = user_load($user->uid);
+     $wrapper = extended_entity_wrapper('user', $account, array(), 'UserEntityWrapper');
+     $traveller_options['-1'] = $wrapper->getFullName();
+
+    // Generate Favorite Travellers widget
+    foreach($favorite_travellers as $key => $traveller) {
+      $traveller_options[$key] = implode(' ', array_filter(array(
+          UserEntityWrapper::getTitleName($traveller->title),
+          $traveller->first_name,
+          $traveller->last_name,
+      )));
+    }
   }
+  
 
   // Set values if favorite_traveller has been selected
   if ($favorite_traveller_id !== NULL) {
@@ -1184,8 +1189,12 @@ function test_service_support_get_element($title, $passengers, $title_options = 
       $row_title = $title . " " . $index;
     }
     $row_wrapper = 'favourite-traveller-' . $traveller;
-
-    $form[$traveller] = array(
+    $item = 'favourite-traveller-item-'.$index;
+    $form[$item] = array(
+      '#type' => 'container',
+    );
+    
+    $form[$item][$traveller] = array(
       '#type' => 'traveller',
       '#title_options' => $title_options,
       '#membership_prefix' => $membership_prefix,
@@ -1198,10 +1207,10 @@ function test_service_support_get_element($title, $passengers, $title_options = 
     );
 
     if(!empty($favorite_travellers)){
-      $form['_' . $traveller] = array(
+      $form[$item]['_' . $traveller] = array(
         '#type' => 'select',
         '#title' => $row_title,
-        '#options' => array('NONE' => t('No preference')) + $traveller_options,
+        '#options' => array('' => $row_title) + $traveller_options,
         '#prefix' => '<div class="favourite-traveller-selector favourite-traveller-'. $index .'">',
         '#suffix' => '</div>',
         '#ajax1' => array(
@@ -1213,10 +1222,10 @@ function test_service_support_get_element($title, $passengers, $title_options = 
         '#attributes' => array('class' => array('favourite-traveller-picker')),
       );
       
-      $form[$traveller]['#title'] = NULL;
+      $form[$item][$traveller]['#title'] = NULL;
     }
     else {
-      $form[$traveller]['#title'] = $row_title;
+      $form[$item][$traveller]['#title'] = $row_title;
     }
 
     $index++;
