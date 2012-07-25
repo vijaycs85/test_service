@@ -314,7 +314,7 @@ function test_service_get_booking_quotation() {
   $origin_destination = array_pop($origin_destination);
   $search_criteria = array(
     'origin_destination' => $origin_destination,
-    'depart' => strtotime('+2 days 6 am'),
+    'depart' => strtotime('+3 days 6 am'),
     'adult' => '2',
     'senior' => '1',
     'youth' => '0',
@@ -322,7 +322,8 @@ function test_service_get_booking_quotation() {
     'return' => strtotime('+5 days 11 am'),
   );
   $train_search = new TrainSearch($search_criteria['origin_destination'], $search_criteria['depart'], $search_criteria['adult'], $search_criteria['senior'], $search_criteria['youth'], $search_criteria['child'], $search_criteria['return']);
-  $outward_proposals = $train_search->getProposalsForDay(Journey::$TYPE_OUTWARD);
+  $outward_proposals = $train_search->getEFTProposalsForDay(Journey::$TYPE_OUTWARD);
+  print_r('ddd');exit;
   if (!empty($outward_proposals)) {
     return array(
       'status' => 1,
@@ -1025,9 +1026,17 @@ function test_service_psp_refund() {
 
 function test_service_test($mid, $message) {
   global $user;
+$groups = array('SBE_FBC_GROUP_EFT_CARTE_CLASSIQUE', 'SBE_FBC_GROUP_ADS');
+  variable_set('eft_carte_classique_fbc_groups', $groups);
+  $groups = array('SBE_FBC_GROUP_EFT_CARTE_BLANCHE', 'SBE_FBC_GROUP_ADS');
+variable_set('eft_carte_blanche_fbc_groups', $groups);
+  
+  print_r(variable_get('eft_carte_classique_fbc_groups'));
+  print_r(variable_get('eft_carte_blanche_fbc_groups'));
+  /*
   $service = RaiseRetroClaimRequest::create($user);
   $service->setClaimData();
-  $service->invoke();
+  $service->invoke();*/
 }
 
 function test_service_record_activity() {
