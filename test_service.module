@@ -136,7 +136,12 @@ function test_service_menu() {
     'page callback' => 'test_service_get_booking_quotation',
     'access arguments' => array('access content'),
   );
-
+$items['test-service/get-booking-promo-availability'] = array(
+    'title' => 'Testing services',
+    'page callback' => 'test_service_get_booking_promo_availability',
+    'access arguments' => array('access content'),
+  );
+  
   $items['test-service/cancel-reservation'] = array(
     'title' => 'Testing services',
     'page callback' => 'test_service_cancel_reservation',
@@ -673,6 +678,39 @@ function test_service_get_booking_quotation_by_period() {
   return test_service_get_default();
 }
 
+function test_service_get_booking_promo_availability() {
+  $origin_destination = entity_load('origin_destination', FALSE, array('origin_code' => '7015400', 'destination_code' => '8727100'));
+  if (empty($origin_destination)) {
+    watchdog('test_service', t('Error while testing %origin to %destination', array('%origin' => '7015400', '%destination' => '8727100',)));
+  }
+  $origin_destination = array_pop($origin_destination);
+  $service = GetBookingPromoAvailability::create();
+  $service->journey_type = 'Outward';
+  $service->setOD($origin_destination);
+  $service->one_way = TRUE;
+  $service->start_date = new DateTime();
+  $service->start_date->setTimestamp(strtotime('+7 days 6 am'));
+  $service->end_date = new DateTime();
+  $service->end_date->setTimestamp(strtotime('+14 days 6 am'));
+  $passenger_counts = array(
+    'adult' => 2
+  );
+  // Set passengers participating in the request
+    $passenger_id = 1;
+    foreach($passenger_counts as $type => $passenger_count) {
+      for($i = 0; $i < $passenger_count; $i++) {
+        if (($age = 25) === FALSE) {
+          $age = Passenger::$PASSENGER_AGE[$type];
+        }
+        $service->addPassenger($passenger_id, $type, $age);
+        $passenger_id++;
+      }
+    }
+  $service->stub = TRUE;
+  $service->invoke();
+  print_r($service);exit;
+}
+
 function test_service_manage_user() {
   $service =  ManageCustomer::create();// print_r($service);
   $result = $service->addMemberContact('testing28@mail.com', 'I', 'H');
@@ -1025,6 +1063,7 @@ function test_service_psp_refund() {
 }
 
 function test_service_test($mid, $message) {
+  train_service_add_product();exit;
   global $user;
 $groups = array('SBE_FBC_GROUP_EFT_CARTE_CLASSIQUE', 'SBE_FBC_GROUP_ADS');
   variable_set('eft_carte_classique_fbc_groups', $groups);
@@ -1118,35 +1157,61 @@ function _test_service_test_dynamic_messages() {
     $entity = cms_dynamic_messages_save((object)$item);
   }
 }
+function test_service_form_elements_phone($element_name, $form_state, $phone, $isd, $country_isd, $required = FALSE) {
+  // Include country code picker js
+  country_code_picker_include();
 
+  $element = array();
+  $element[$element_name] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Contact phone number'),
+    '#description' => t('Please provide a contact phone number (preferably a mobile)'),
+  );
+
+  // If phone number contains hyphen split into country code and phone number.
+  if (!empty($phone) && (strpos($phone, '-') !== FALSE)) {
+    list($isd, $phone) = explode('-', $phone);
+  }
+
+  if (empty($isd)) {
+    $isd = $country_isd;
+  }
+
+  $element[$element_name]['phone_country_code'] = array(
+    '#type' => 'textfield',
+    '#default_value' => isset($form_state['values']['phone_country_code']) ? check_plain($form_state['values']['phone_country_code']) : $isd,
+    '#size' => 5,
+    '#title' => t('Phone') . $required ? ' (' . t('optional') . ')' : '',
+    '#field_prefix' => 'Country code',
+    '#required' => $required,
+    '#attributes' => array('class' => array('country-code-picker')),
+  );
+
+  $element[$element_name]['phone'] = array(
+    '#type' => 'textfield',
+    '#default_value' => isset($form_state['values']['phone']) ? check_plain($form_state['values']['phone']) : $phone,
+    '#size' => 25,
+    '#field_prefix' => t('Number (including any area code)'),
+    '#required' => $required,
+  );
+
+  return $element;
+}
 function test_service_form($form, &$from_state) {
-  global $user;
-  $account = user_load($user->uid);
-  $user_wrapper = extended_entity_wrapper('user', $account, array(), 'UserEntityWrapper');
-  favourite_traveller_picker_include_js();
-  //  module_load_include('inc', 'standard_booking_path', 'includes/standard_booking_path.login_form');
-  //$form = standard_booking_path_login_form($form, $from_state);
-  module_load_include('inc', 'standard_booking_path', 'includes/standard_booking_path.traveller_details');
-  $form['traveler_details']['traveler_details_wrapper']['adults'] = array(
-    '#type' => 'item',
+  $form['postcode'] = array(
+    '#type' => 'paf',
+    '#required' => TRUE,
+    '#title' => 'Postcode',
   );
-  $adults = array(
-    new Passenger(1.1, 'First name' ,'Last name'),
-    new Passenger(1.2, 'First name' ,'Last name'),
+  $form['go'] = array(
+    '#type' => 'submit',
+    '#value' => t('Go'),
   );
-  $title_options = $user_wrapper->getTitlesOptions();
-  $favourite_travellers = $user_wrapper->getAllTravellersById();
-  $meal_options = array(
-    'BSC' => 'Meal 1',
-    'BSC2' => 'Meal 2',
-  );
-  $form['traveler_details']['traveler_details_wrapper']['adults'] += test_service_support_get_element(t('Adult'), $adults, $title_options, $membership_prefix, $meal_options, $defaults, $favourite_travellers, $selected_favorite_traveller, $train_search);
-  $form['traveler_details']['traveler_details_wrapper']['adults'] += test_service_support_get_element(t('Adult'), $adults, $title_options, $membership_prefix, $meal_options, $defaults, $favourite_travellers, $selected_favorite_traveller, $train_search);
-  $form['#attributes'] = array('class' => array('standard_booking_path_travellers_details_form'));
-  // $form += _user_account_management_payment_card_fields(100, $form_state);
   return $form;
 }
-
+function test_service_form_submit($form, &$form_state) {
+  print_r($form_state['values']);exit;
+}
 
 function test_service_support_get_element($title, $passengers, $title_options = array(), $membership_prefix = '', $meal_options = array(), $values = array(), $favorite_travellers = array(), $favorite_traveller_id = NULL) {
   if (!empty($favorite_travellers)) {
@@ -1244,4 +1309,173 @@ function test_service_disrupted_trains() {
   $service->invoke();
   $trains = $service->getTrains();
   print_r($trains);exit;  
+}
+
+function train_service_add_product() {
+  $non_flexible_text = 'Exchanges: Non-exchangeable. Refunds: Non-refundable.';
+  $atoc_carriers = array(
+    array('target_id' => 16, 'target_type' => 'carrier'),
+    array('target_id' => 17, 'target_type' => 'carrier'),
+    array('target_id' => 18, 'target_type' => 'carrier'),
+    array('target_id' => 19, 'target_type' => 'carrier'),
+    array('target_id' => 20, 'target_type' => 'carrier'),
+    array('target_id' => 21, 'target_type' => 'carrier'),
+    array('target_id' => 22, 'target_type' => 'carrier'),
+    array('target_id' => 23, 'target_type' => 'carrier'),
+    array('target_id' => 24, 'target_type' => 'carrier'),
+    array('target_id' => 25, 'target_type' => 'carrier'),
+    array('target_id' => 26, 'target_type' => 'carrier'),
+    array('target_id' => 27, 'target_type' => 'carrier'),
+    array('target_id' => 28, 'target_type' => 'carrier'),
+    array('target_id' => 29, 'target_type' => 'carrier'),
+    array('target_id' => 30, 'target_type' => 'carrier'),
+    array('target_id' => 31, 'target_type' => 'carrier'),
+    array('target_id' => 32, 'target_type' => 'carrier')
+  );
+
+  // ============
+  // Virgin trains First Class, Off Peak
+  $product = commerce_product_new('train_ticket');
+  $product->sku = 'TRAIN_TICKET_ZZ_1_7';
+  $product->field_ticket_carriers[LANGUAGE_NONE] = $atoc_carriers;
+  $product->field_ticket_class[LANGUAGE_NONE][0]['value'] = '1';
+  $product->field_ticket_flexibility_level[LANGUAGE_NONE][0]['value'] = 7;
+  $product->field_ticket_class_name[LANGUAGE_NONE][0]['value'] = 'First Class';
+  $product->field_ticket_flexibility_name[LANGUAGE_NONE][0]['value'] = 'Off Peak';
+  $product->field_ticket_description[LANGUAGE_NONE][] = array(
+    'summary' => "",
+    'value' => "",
+    'format' => 'filtered_html'
+  );
+  $product->field_flexibility_desc[LANGUAGE_NONE][] = array(
+    'summary' => '',
+    'value' => $non_flexible_text,
+    'format' => 'filtered_html'
+  );
+  $product->commerce_price[LANGUAGE_NONE][0]['amount'] = 0.0;
+  $product->commerce_price[LANGUAGE_NONE][0]['currency_code'] = 'EUR';
+  $product->title = 'First Class, Off Peak';
+  $product->status = 1;
+  commerce_product_save($product);
+
+  // Virgin trains First Class, Advance
+  $product = commerce_product_new('train_ticket');
+  $product->sku = 'TRAIN_TICKET_ZZ_1_8';
+  $product->field_ticket_carriers[LANGUAGE_NONE] = $atoc_carriers;
+  $product->field_ticket_class[LANGUAGE_NONE][0]['value'] = '1';
+  $product->field_ticket_flexibility_level[LANGUAGE_NONE][0]['value'] = 8;
+  $product->field_ticket_class_name[LANGUAGE_NONE][0]['value'] = 'First Class';
+  $product->field_ticket_flexibility_name[LANGUAGE_NONE][0]['value'] = 'Advance';
+  $product->field_ticket_description[LANGUAGE_NONE][] = array(
+    'summary' => "",
+    'value' => "",
+    'format' => 'filtered_html'
+  );
+  $product->field_flexibility_desc[LANGUAGE_NONE][] = array(
+    'summary' => '',
+    'value' => $non_flexible_text,
+    'format' => 'filtered_html'
+  );
+  $product->commerce_price[LANGUAGE_NONE][0]['amount'] = 0.0;
+  $product->commerce_price[LANGUAGE_NONE][0]['currency_code'] = 'EUR';
+  $product->title = 'First Class, Advance';
+  $product->status = 1;
+  commerce_product_save($product);
+
+// Virgin trains First Class, Anytime
+  $product = commerce_product_new('train_ticket');
+  $product->sku = 'TRAIN_TICKET_ZZ_1_9';
+  $product->field_ticket_carriers[LANGUAGE_NONE] = $atoc_carriers;
+  $product->field_ticket_class[LANGUAGE_NONE][0]['value'] = '1';
+  $product->field_ticket_flexibility_level[LANGUAGE_NONE][0]['value'] = 9;
+  $product->field_ticket_class_name[LANGUAGE_NONE][0]['value'] = 'First Class';
+  $product->field_ticket_flexibility_name[LANGUAGE_NONE][0]['value'] = 'Anytime';
+  $product->field_ticket_description[LANGUAGE_NONE][] = array(
+    'summary' => "",
+    'value' => "",
+    'format' => 'filtered_html'
+  );
+  $product->field_flexibility_desc[LANGUAGE_NONE][] = array(
+    'summary' => '',
+    'value' => $non_flexible_text,
+    'format' => 'filtered_html'
+  );
+  $product->commerce_price[LANGUAGE_NONE][0]['amount'] = 0.0;
+  $product->commerce_price[LANGUAGE_NONE][0]['currency_code'] = 'EUR';
+  $product->title = 'First Class, Advance';
+  $product->status = 1;
+  commerce_product_save($product);
+
+  // ============
+  // Virgin trains Standard Class, Off Peak
+  $product = commerce_product_new('train_ticket');
+  $product->sku = 'TRAIN_TICKET_ZZ_2_7';
+  $product->field_ticket_carriers[LANGUAGE_NONE] = $atoc_carriers;
+  $product->field_ticket_class[LANGUAGE_NONE][0]['value'] = '2';
+  $product->field_ticket_flexibility_level[LANGUAGE_NONE][0]['value'] = 7;
+  $product->field_ticket_class_name[LANGUAGE_NONE][0]['value'] = 'Standard Class';
+  $product->field_ticket_flexibility_name[LANGUAGE_NONE][0]['value'] = 'Off Peak';
+  $product->field_ticket_description[LANGUAGE_NONE][] = array(
+    'summary' => "",
+    'value' => "",
+    'format' => 'filtered_html'
+  );
+  $product->field_flexibility_desc[LANGUAGE_NONE][] = array(
+    'summary' => '',
+    'value' => $non_flexible_text,
+    'format' => 'filtered_html'
+  );
+  $product->commerce_price[LANGUAGE_NONE][0]['amount'] = 0.0;
+  $product->commerce_price[LANGUAGE_NONE][0]['currency_code'] = 'EUR';
+  $product->title = 'First Class, Off Peak';
+  $product->status = 1;
+  commerce_product_save($product);
+
+  // Virgin trains Standard Class, Advance
+  $product = commerce_product_new('train_ticket');
+  $product->sku = 'TRAIN_TICKET_ZZ_2_8';
+  $product->field_ticket_carriers[LANGUAGE_NONE] = $atoc_carriers;
+  $product->field_ticket_class[LANGUAGE_NONE][0]['value'] = '2';
+  $product->field_ticket_flexibility_level[LANGUAGE_NONE][0]['value'] = 8;
+  $product->field_ticket_class_name[LANGUAGE_NONE][0]['value'] = 'Standard Class';
+  $product->field_ticket_flexibility_name[LANGUAGE_NONE][0]['value'] = 'Advance';
+  $product->field_ticket_description[LANGUAGE_NONE][] = array(
+    'summary' => "",
+    'value' => "",
+    'format' => 'filtered_html'
+  );
+  $product->field_flexibility_desc[LANGUAGE_NONE][] = array(
+    'summary' => '',
+    'value' => $non_flexible_text,
+    'format' => 'filtered_html'
+  );
+  $product->commerce_price[LANGUAGE_NONE][0]['amount'] = 0.0;
+  $product->commerce_price[LANGUAGE_NONE][0]['currency_code'] = 'EUR';
+  $product->title = 'First Class, Advance';
+  $product->status = 1;
+  commerce_product_save($product);
+
+  // Virgin trains Standard Class, Anytime
+  $product = commerce_product_new('train_ticket');
+  $product->sku = 'TRAIN_TICKET_ZZ_2_9';
+  $product->field_ticket_carriers[LANGUAGE_NONE] = $atoc_carriers;
+  $product->field_ticket_class[LANGUAGE_NONE][0]['value'] = '2';
+  $product->field_ticket_flexibility_level[LANGUAGE_NONE][0]['value'] = 9;
+  $product->field_ticket_class_name[LANGUAGE_NONE][0]['value'] = 'Standard Class';
+  $product->field_ticket_flexibility_name[LANGUAGE_NONE][0]['value'] = 'Anytime';
+  $product->field_ticket_description[LANGUAGE_NONE][] = array(
+    'summary' => "",
+    'value' => "",
+    'format' => 'filtered_html'
+  );
+  $product->field_flexibility_desc[LANGUAGE_NONE][] = array(
+    'summary' => '',
+    'value' => $non_flexible_text,
+    'format' => 'filtered_html'
+  );
+  $product->commerce_price[LANGUAGE_NONE][0]['amount'] = 0.0;
+  $product->commerce_price[LANGUAGE_NONE][0]['currency_code'] = 'EUR';
+  $product->title = 'Standard Class, Anytime';
+  $product->status = 1;
+  commerce_product_save($product);
 }
