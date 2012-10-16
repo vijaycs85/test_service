@@ -141,7 +141,7 @@ $items['test-service/get-booking-promo-availability'] = array(
     'page callback' => 'test_service_get_booking_promo_availability',
     'access arguments' => array('access content'),
   );
-  
+
   $items['test-service/cancel-reservation'] = array(
     'title' => 'Testing services',
     'page callback' => 'test_service_cancel_reservation',
@@ -631,7 +631,7 @@ function test_service_finalize_exchange() {
   'from' => 'GBSPX',
   'to' => 'FRPNO',
   'inbound' => $segment_details,
-  'outbound' => $segment_details, 
+  'outbound' => $segment_details,
   'passengers' => $passengers,
   'journeyDetails' => $journey_details,
     'products' => array (
@@ -740,9 +740,9 @@ function test_service_get_passenger($form, &$form_state) {
   // Get title options from reference data store
   $title_options = array( // @TODO: BR263
   NULL => t('Select'),
-    'Mr' => t('Mr'), 
-    'Ms' => t('Ms'), 
-    'Mrs' => t('Mrs'), 
+    'Mr' => t('Mr'),
+    'Ms' => t('Ms'),
+    'Mrs' => t('Mrs'),
     'Miss' => t('Miss'),
     'Dr' => t('Dr')
   );
@@ -1062,20 +1062,7 @@ function test_service_psp_refund() {
   echo $service->getMerchantReference();
 }
 
-function test_service_test($mid, $message) {
-  train_service_add_product();exit;
-  global $user;
-$groups = array('SBE_FBC_GROUP_EFT_CARTE_CLASSIQUE', 'SBE_FBC_GROUP_ADS');
-  variable_set('eft_carte_classique_fbc_groups', $groups);
-  $groups = array('SBE_FBC_GROUP_EFT_CARTE_BLANCHE', 'SBE_FBC_GROUP_ADS');
-variable_set('eft_carte_blanche_fbc_groups', $groups);
-  
-  print_r(variable_get('eft_carte_classique_fbc_groups'));
-  print_r(variable_get('eft_carte_blanche_fbc_groups'));
-  /*
-  $service = RaiseRetroClaimRequest::create($user);
-  $service->setClaimData();
-  $service->invoke();*/
+function test_service_test() {
 }
 
 function test_service_record_activity() {
@@ -1198,14 +1185,37 @@ function test_service_form_elements_phone($element_name, $form_state, $phone, $i
   return $element;
 }
 function test_service_form($form, &$from_state) {
-  $form['postcode'] = array(
-    '#type' => 'paf',
-    '#required' => TRUE,
-    '#title' => 'Postcode',
+  $group_options = array(
+    'previous-search' => t('Previous search'),
+    'locationgroup' => t('Location elements'),
+    'dategroup ' => t('Date elements'),
+    'passengergroup ' => t('Passenger elements'),
+    'hotelgroup' => t('Hotel elements'),
   );
-  $form['go'] = array(
-    '#type' => 'submit',
-    '#value' => t('Go'),
+  $element_options = array(
+    'from' => t('From'),
+    'to' => t('To'),
+    'origin' => t('Origin'),
+    'destination' => t('Destination'),
+    'one_way' => t('One way'),
+    'adult' => t('Adult'),
+    'child' => t('Child'),
+    'youth' => t('Youth'),
+    'senior' => t('Senior'),
+    'kids_tips' => t('Kids tips'),
+    'special_information' => t('Special information')
+  );
+  $form['group_visibility'] = array(
+    '#type' => 'checkboxes',
+    '#title' => 'Hide Group(s)',
+    '#options' => $group_options,
+    '#description' => t('Hide group(s). All displayed, if nothing selected'),
+  );
+  $form['element_visibility'] = array(
+    '#type' => 'checkboxes',
+    '#title' => 'Hide Element(s)',
+    '#options' => $element_options,
+    '#description' => t('Hide individual element. All displayed, if nothing selected'),
   );
   return $form;
 }
@@ -1229,7 +1239,7 @@ function test_service_support_get_element($title, $passengers, $title_options = 
       )));
     }
   }
-  
+
 
   // Set values if favorite_traveller has been selected
   if ($favorite_traveller_id !== NULL) {
@@ -1262,7 +1272,7 @@ function test_service_support_get_element($title, $passengers, $title_options = 
     $form[$item] = array(
       '#type' => 'container',
     );
-    
+
     $form[$item][$traveller] = array(
       '#type' => 'traveller',
       '#title_options' => $title_options,
@@ -1290,7 +1300,7 @@ function test_service_support_get_element($title, $passengers, $title_options = 
         '#weight' => $index * 13 - 1,
         '#attributes' => array('class' => array('favourite-traveller-picker')),
       );
-      
+
       $form[$item][$traveller]['#title'] = NULL;
     }
     else {
@@ -1308,7 +1318,7 @@ function test_service_disrupted_trains() {
   $service->stub = TRUE;
   $service->invoke();
   $trains = $service->getTrains();
-  print_r($trains);exit;  
+  print_r($trains);exit;
 }
 
 function train_service_add_product() {
